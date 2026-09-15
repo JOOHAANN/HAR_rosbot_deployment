@@ -6,8 +6,15 @@ map_name,home,Map name loaded by the existing jazzy-rosbot navigation container
 initial_pose_config,config/robot_initial_poses.csv,Map-aware persistent initial poses for localization; enabled rows are applied on Nav2 restart
 robot_rgb_topics,/rosbot_1/camera/rgb/image_raw/compressed;/rosbot_2/camera/rgb/image_raw/compressed,Physical RGB topics in the same order as robot_namespaces
 ring_radius_m,1.5,Human-centered ring radius in meters
-ring_angles_deg,0;90;180;270,Four map-frame ring bearings; angle zero is +x in map
-initial_robot_slots,0;1,Current ring slots assumed before the first physical move
+ring_angles_deg,270;0;90;180,Four slot offsets relative to the human; slot 1 is the front (0 degrees)
+human_position_mode,fixed,Use the configured current human point; no depth or person-coordinate estimation is used; RViz can update it online
+human_x_m,0.0,Current/manual human center x in the human_frame map coordinates; used as the startup value
+human_y_m,0.0,Current/manual human center y in the human_frame map coordinates; used as the startup value
+human_z_m,0.0,Fixed human center z; only x and y affect the ring
+human_yaw_deg,0.0,Human heading in map degrees; the front direction points to initial slot 1
+human_front_slot,1,Slot used as the human-facing zero-degree reference
+initial_robot_pose_mode,relative_human_slots,Derive initial robot map poses from the human pose and slots; use manual_csv for legacy poses
+initial_robot_slots,0;1,Initial ring slots only; live mapping is updated from the reached target after each physical move
 bootstrap_pair,0;2,Initial pair if the active-view selector has not answered yet
 view_topics,/rosbot_1/camera/rgb/image_raw/compressed;/rosbot_2/camera/rgb/image_raw/compressed;/har/view/slot_2/compressed;/har/view/slot_3/compressed,Four logical view topics used in diagnostics; physical topics are routed by slot
 view_image_transport,compressed,Physical RGB transport used by the active-view selector
@@ -28,9 +35,6 @@ target_tolerance_m,0.15,Arrival/ring-entry tolerance in meters
 arc_step_deg,15,Maximum angular spacing between physical arc waypoints
 allow_radial_acquire,true,Allow the one-time approach from an arbitrary start radius to the ring
 min_robot_separation_m,0.8,Collision guard for current and planned robot poses
-person_timeout_sec,1.0,Maximum age of a follow detection used as human center
-depth_topic_suffix,camera/depth/image,Metric depth Image topic suffix
-camera_info_topic_suffix,camera/depth/camera_info,Depth CameraInfo topic suffix
 base_frame_suffix,base_link,Robot base TF frame suffix
 human_frame,map,Frame in which ring targets are published
 settle_seconds,3.0,Wait after both robots arrive before opening recognition
@@ -47,11 +51,18 @@ slot_map_topic,/har/orbit/robot_slots,Current physical robot-to-ring-slot mappin
 state_topic,/har/orbit/state,Coordinator state and safety diagnostics
 plan_topic,/har/orbit/plan,JSON target and arc-waypoint plan
 target_pose_topic,/har/orbit/target_poses,Four target poses for RViz/PoseArray viewers
+human_marker_topic,/har/orbit/human_center_marker,Current human center Marker topic for RViz
+human_heading_marker_topic,/har/orbit/human_heading_marker,Human heading arrow Marker topic for RViz
+human_pose_topic,/har/orbit/human_pose,RViz SetInitialPose topic for online human position and heading
+persist_rviz_human_pose,true,Write the latest RViz human pose back to this CSV
+initial_robot_pose_topic,/har/orbit/initial_robot_poses,Virtual initial robot PoseArray that follows the human in RViz
+initial_robot_marker_topic,/har/orbit/initial_robot_markers,Virtual initial robot arrows and labels that follow the human in RViz
 recognition_cycle_topic,/har/orbit/recognition_cycle,Trigger emitted after the 3-second settle wait
 select_next_topic,/har/orbit/select_next,Trigger for the next active-view decision
 fusion_topic,/har/final_action,Fused action output consumed after each recognition cycle
 follow_service_suffix,person_follow_controller/set_enabled,Existing follow enable/disable service
-follow_enabled_after_settle,true,Enable existing follow controller only after both robots settle
+follow_when_stationary,true,Enable view-only person following whenever neither robot is moving; controller keeps linear.x at zero
+follow_enabled_after_settle,true,Legacy compatibility field; stationary follow is controlled by follow_when_stationary
 fusion_score_field,candidate_ranking_scores,Score vector used by the ROS fusion node
 dry_run_once,true,Stop after the first printed cycle unless overridden by --continuous
 dry_run_update_slot_mapping,false,In dry-run keep the physical robot-to-slot map unchanged because no robot actually moves

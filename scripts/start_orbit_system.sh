@@ -120,7 +120,7 @@ cd "$ROOT"
 mkdir -p "$ROOT/logs"
 
 echo "[1/6] Starting existing jazzy-rosbot localization/Nav2 (no goal is sent)."
-nav_args=(--robots "$ROBOT_NAMESPACES" --map "$MAP_NAME" --initial-pose-config "$INITIAL_POSE_CONFIG")
+nav_args=(--robots "$ROBOT_NAMESPACES" --map "$MAP_NAME" --orbit-config "$ORBIT_CONFIG" --initial-pose-config "$INITIAL_POSE_CONFIG")
 [[ "$RESTART_NAV" == "1" ]] && nav_args+=(--restart)
 "$ROOT/scripts/start_nav.sh" "${nav_args[@]}"
 
@@ -199,5 +199,7 @@ echo "Safety: no rosbot-offboard goal command was run; dry-run coordinator sends
 echo "State:   /har/orbit/state"
 echo "Plan:    /har/orbit/plan"
 echo "Targets: /har/orbit/target_poses"
+echo "Human RViz pose: /har/orbit/human_pose"
+echo "Virtual initial robots: /har/orbit/initial_robot_markers"
 echo "Fusion:  /har/final_action"
 echo "Monitor: ./scripts/watch_orbit_targets.sh"

@@ -3,7 +3,8 @@ set -euo pipefail
 
 # Start the existing person-follow framework in its safe default state. The
 # controller/arbiter are namespaced per robot and enabled_on_start=false, so
-# merely starting this script cannot command a moving base.
+# merely starting this script cannot command a moving base. The orbit
+# coordinator enables view-only follow whenever both robots are stationary.
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONTAINER_NAME="${HAR_CONTAINER_NAME:-har-rosbot-deployment}"
@@ -15,8 +16,8 @@ Usage:
   ./scripts/start_follow.sh [--dry-run]
 
 Starts person_follow_demo controller + cmd_vel_arbiter for both ROSbots.
-The controller starts disabled; orbit_coordinator enables it only after both
-robots have arrived and settled. Nav2 keeps priority through cmd_vel_arbiter.
+The controller starts disabled; orbit_coordinator enables it whenever neither
+robot is moving. Nav2 keeps priority through cmd_vel_arbiter.
 EOF
 }
 
@@ -77,4 +78,4 @@ for raw_namespace in "${namespaces[@]}"; do
 done
 
 (( started > 0 )) || echo "all requested follow nodes were already running"
-echo "Follow framework is safe-disabled until orbit_coordinator reaches SETTLING."
+echo "Follow framework starts disabled; orbit_coordinator enables view-follow in stationary states and disables it during Nav2 movement."

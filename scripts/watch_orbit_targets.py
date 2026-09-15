@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 import rclpy
+from geometry_msgs.msg import PoseArray, PoseWithCovarianceStamped
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile
@@ -44,6 +45,15 @@ def number(value: Any, default: float = 0.0) -> float:
         return default
 
 
+def pose_yaw(orientation: Any) -> float:
+    return math.degrees(
+        math.atan2(
+            2.0 * (orientation.w * orientation.z + orientation.x * orientation.y),
+            1.0 - 2.0 * (orientation.y * orientation.y + orientation.z * orientation.z),
+        )
+    )
+
+
 def slot_target(plan: dict[str, Any], slot: Any) -> dict[str, Any] | None:
     try:
         wanted = int(slot)
@@ -63,13 +73,26 @@ class OrbitTargetMonitor(Node):
         self.state: dict[str, Any] | None = None
         self.last_plan_received = 0.0
         self.last_rendered = 0.0
+        self.online_human: tuple[float, float, float] | None = None
+        self.virtual_initial_poses: list[Any] = []
+        self.robot_namespaces = [
+            item.strip()
+            for item in config.get("robot_namespaces", "rosbot_1;rosbot_2").replace(",", ";").split(";")
+            if item.strip()
+        ]
 
         qos = QoSProfile(depth=1)
         qos.durability = DurabilityPolicy.TRANSIENT_LOCAL
         plan_topic = config.get("plan_topic", "/har/orbit/plan")
         state_topic = config.get("state_topic", "/har/orbit/state")
+        human_pose_topic = config.get("human_pose_topic", "/har/orbit/human_pose")
+        initial_pose_topic = config.get(
+            "initial_robot_pose_topic", "/har/orbit/initial_robot_poses"
+        )
         self.create_subscription(String, plan_topic, self._on_plan, qos)
         self.create_subscription(String, state_topic, self._on_state, qos)
+        self.create_subscription(PoseWithCovarianceStamped, human_pose_topic, self._on_human_pose, 10)
+        self.create_subscription(PoseArray, initial_pose_topic, self._on_initial_poses, qos)
         self.create_timer(1.0, self._on_timer)
         self._render()
 
@@ -94,6 +117,19 @@ class OrbitTargetMonitor(Node):
             self.state = payload
             self._render()
 
+    def _on_human_pose(self, message: PoseWithCovarianceStamped) -> None:
+        pose = message.pose.pose
+        self.online_human = (
+            float(pose.position.x),
+            float(pose.position.y),
+            pose_yaw(pose.orientation),
+        )
+        self._render()
+
+    def _on_initial_poses(self, message: PoseArray) -> None:
+        self.virtual_initial_poses = list(message.poses)
+        self._render()
+
     def _on_timer(self) -> None:
         self._render()
 
@@ -112,6 +148,19 @@ class OrbitTargetMonitor(Node):
 
         state_name = (self.state or {}).get("state", "等待状态")
         lines.append(f"state: {state_name}")
+        if self.online_human is not None:
+            x, y, yaw = self.online_human
+            lines.append(
+                f"online human pose (map): x={x:.3f}  y={y:.3f}  yaw={yaw:.1f}°"
+            )
+        if self.virtual_initial_poses:
+            lines.append("virtual initial robot poses:")
+            for index, pose in enumerate(self.virtual_initial_poses):
+                robot = self.robot_namespaces[index] if index < len(self.robot_namespaces) else f"robot_{index}"
+                lines.append(
+                    f"  {robot}: x={pose.position.x:.3f}  y={pose.position.y:.3f}  "
+                    f"yaw_to_human={pose_yaw(pose.orientation):.1f}°"
+                )
         if self.plan is None:
             lines.append("\n等待 /har/orbit/plan ……")
             lines.append("请确认有人在相机中，并保持 orbit coordinator 正在运行。")
@@ -127,9 +176,22 @@ class OrbitTargetMonitor(Node):
         lines.append(
             "human center (map): "
             f"x={number(center.get('x')):.3f}  y={number(center.get('y')):.3f}  "
+            f"yaw={number(center.get('yaw_deg')):.1f}°  "
             f"source={center.get('source', '?')}"
         )
         lines.append(f"ring radius: {number(plan.get('radius_m')):.3f} m")
+
+        initial_poses = plan.get("initial_robot_poses") or {}
+        if initial_poses:
+            lines.append("\nVirtual initial robot poses (RViz markers):")
+            for robot, pose in initial_poses.items():
+                if not isinstance(pose, dict):
+                    continue
+                lines.append(
+                    f"  {robot} -> slot {pose.get('slot', '?')}: "
+                    f"x={number(pose.get('x')):.3f}  y={number(pose.get('y')):.3f}  "
+                    f"yaw_to_human={number(pose.get('yaw_deg')):.1f}°"
+                )
 
         lines.append("\nFour ring candidates:")
         for target in plan.get("target_poses", []):

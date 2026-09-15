@@ -80,14 +80,14 @@ cd /home/youhan/HAR/HAR_rosbot_deployment
 
 它会在 `jazzy-rosbot` 中用 `home` 地图启动两台机器人的定位和 Nav2；需要 RViz 时使用 `./scripts/start_nav.sh --rviz`。重新启动导航使用 `./scripts/start_nav.sh --restart`。地图也可以在 `config/orbit_system_config.csv` 的 `map_name` 行调整。
 
-机器人的初始地图坐标保存在 [`config/robot_initial_poses.csv`](./config/robot_initial_poses.csv)。先在 RViz 中用 `2D Pose Estimate` 设置机器人位姿，再从 TF 读出 `map -> rosbot_i/base_link` 的 `x/y/yaw`，填入对应行并把 `enabled` 改为 `true`。其中 `yaw_deg` 用角度填写，启动脚本会自动转换成 ROS 所需的弧度；坐标属于该行的 `map_name` 地图。保存后必须用 `--restart` 重新启动定位，已经运行的定位进程不会被普通启动命令强行改位姿：
+默认情况下不需要分别填写两个机器人的初始坐标：`initial_robot_pose_mode=relative_human_slots` 会用人体坐标、人体朝向、`ring_radius_m` 和 `initial_robot_slots=0;1` 自动计算 rosbot_1/rosbot_2 的启动 `x/y/yaw`，且两个机器人都会朝向人体。这里的机器人坐标和 slot 绑定只是第一次启动/第一次规划前的 bootstrap，不是永久约束；进入真实运行后，每次规划优先读取 `map -> rosbot_i/base_link` 的当前 TF，并在机器人到达目标后更新当前 slot。真实导航进程已经运行时，修改人体姿态后需要用 `--restart` 重新加载定位初始位姿；普通启动不会强行改变已经运行的定位：
 
 ```bash
 ./scripts/start_nav.sh --dry-run
 ./scripts/start_nav.sh --restart --rviz
 ```
 
-也可以让完整系统读取同一张表；`config/orbit_system_config.csv` 中的 `initial_pose_config` 指定表路径。未启用或没有匹配地图/机器人的行会保持原来的 `0,0,0` 定位默认值，不会猜测真实坐标。
+如果需要兼容旧的人工测量方式，把 `initial_robot_pose_mode` 改成 `manual_csv`，再编辑 [`config/robot_initial_poses.csv`](./config/robot_initial_poses.csv) 中对应地图、机器人和 `enabled=true` 的行。`yaw_deg` 用角度填写，脚本会自动转换成 ROS 所需的弧度。
 
 ### 3. 三选一的视角移动策略
 
@@ -110,9 +110,24 @@ cd /home/youhan/HAR/HAR_rosbot_deployment
 ```text
 selection_mode=rl/random/cyclic       选择导出的 DDQN、随机或 cyclic 视角策略
 dry_run=true/false                    true 只打印目标坐标；false 才允许发送 Nav2 goal
-ring_radius_m=1.5                    以人体为中心的圆半径，单位 m
-ring_angles_deg=0;90;180;270         四个环形位置在 map 中的角度
-initial_robot_slots=0;1               第一次规划前 rosbot_1/rosbot_2 所在的槽位
+ring_radius_m=1.5                    以当前人体点为中心的圆半径，单位 m
+ring_angles_deg=270;0;90;180         四个相对人体正面的 slot 偏移；slot 1 为正前方 0°
+human_position_mode=fixed             手动人体地图坐标；不使用深度图或人体像素反投影，可由 RViz 在线更新
+human_x_m=0.0 / human_y_m=0.0          当前人体点在 map 中的 x/y（这是启动值），按现场位置修改
+human_z_m=0.0                          固定人体点 z；仅用于诊断，不影响二维导航
+human_yaw_deg=0.0                      人体在 map 中的朝向；ROS 角度约定，+x 为 0°
+human_front_slot=1                     人体正面对应 slot 1
+initial_robot_pose_mode=relative_human_slots
+初始机器人位姿由人体和 slot 自动推导；可改为 manual_csv。仅作为启动基准，不锁定后续机器人位置
+human_marker_topic=/har/orbit/human_center_marker
+                                      RViz 中显示当前人体点的红色 Marker
+human_heading_marker_topic=/har/orbit/human_heading_marker
+                                      RViz 中显示人体朝向的黄色箭头
+human_pose_topic=/har/orbit/human_pose
+                                      RViz 在线人体姿态工具发布的话题
+initial_robot_marker_topic=/har/orbit/initial_robot_markers
+                                      RViz 中随人体移动的两个虚拟初始机器人箭头/标签
+initial_robot_slots=0;1               仅表示初始 slot；真实移动后由到达目标更新，不是永久绑定
 bootstrap_pair=0;2                    没有收到策略结果时使用的初始目标槽位
 active_view_variant=full_depth19     导出的 DDQN 结构
 active_view_policy_device=cuda       DDQN 运行设备
@@ -120,7 +135,7 @@ active_view_rtmpose_device=cuda      视角策略单独使用的 RTMPose 设备
 fusion_continuous=true               是否持续融合两个最新 VPOCLIP 结果
 ```
 
-完整系统入口如下。它会启动已有 Nav2、RViz、Follow（安全关闭）、双机 VPOCLIP、融合、视角策略和环形协调器；配置表默认 `dry_run=true`，所以第一次只输出 rosbot_1 先走、rosbot_2 后走的目标和轨迹，不会移动底盘：
+完整系统入口如下。它会启动已有 Nav2、RViz、Follow、双机 VPOCLIP、融合、视角策略和环形协调器；Follow 在机器人移动时关闭、静止时开启。配置表默认 `dry_run=true`，所以第一次只输出 rosbot_1 先走、rosbot_2 后走的目标和轨迹，不会移动底盘：
 
 dry-run 不会把模拟到达的目标写回真实机器人槽位；`dry_run_update_slot_mapping=false` 时，主动视角模块仍按机器人实际所在槽位工作。若任一机器人相机超过 `active_view_input_stale_seconds`（默认 3 秒）没有新帧，视角选择会暂停，避免断线时复用旧的 13 帧历史。
 
@@ -141,9 +156,17 @@ dry-run 不会把模拟到达的目标写回真实机器人槽位；`dry_run_upd
 ./scripts/start_orbit_system.sh --selection cyclic --continuous
 ```
 
-`start_motion.sh` 不带参数时也会读取 `selection_mode`；带 `rl`、`random` 或 `cyclic` 时只对本次启动覆盖它。实际的 map 坐标规划和 Nav2 串行发送由 `orbit_coordinator.py` 完成，视角策略本身只负责选择下一个环形槽位。
+`start_motion.sh` 不带参数时也会读取 `selection_mode`；带 `rl`、`random` 或 `cyclic` 时只对本次启动覆盖它。实际的 map 坐标规划和 Nav2 串行发送由 `orbit_coordinator.py` 完成，启动时使用 `human_x_m/human_y_m`，运行中可由 RViz 的 `/har/orbit/human_pose` 更新环心和朝向；系统不订阅深度图，视角策略本身只负责选择下一个环形槽位。
 
-确认 RViz 中的目标和日志都正确后，才把表中的 `dry_run` 改为 `false`，或者明确执行 `./scripts/start_orbit_system.sh --live`。移动期间 Follow 保持关闭，rosbot_1 完成后才允许 rosbot_2 开始；双机 VPOCLIP 融合本身始终使用两边最新结果，不等待移动完成。`settle_seconds=3.0` 仍用于落位后的识别周期/主动视角反馈标记。
+### 在 RViz 在线调整人体和两个机器人显示位置
+
+RViz 的 `Fixed Frame` 保持为 `map`。工具栏现在有两个 `2D Pose Estimate`：原来的工具仍用于设置 rosbot_1 定位；另一个发布到 `/har/orbit/human_pose`，用于人体。对人体工具在地图上单击人体中心并拖动箭头设置朝向；RViz 内置工具会在松开鼠标时发布姿态。协调器会立即更新红色人体球、黄色人体朝向箭头，以及蓝色/绿色的两个“virtual initial robot poses”箭头和标签；这两个虚拟箭头会跟随人体坐标和朝向移动。
+
+这里的虚拟机器人显示不会覆盖真实 `map -> rosbot_i/base_link` TF，也不会因为拖动人体而让底盘自行移动。RViz 中真实机器人模型仍表示机器人当前真实定位；蓝色/绿色箭头表示“按 slot 0/1 推导出来的初始相对坐标”，可以用来检查配置是否正确。`persist_rviz_human_pose=true` 时，拖动结束的 x/y/z/yaw 还会写回 `config/orbit_system_config.csv`，作为下次启动值。若要让 Nav2 重新采用这两个推导出的初始位姿，确认现场安全后执行 `./scripts/start_nav.sh --restart`。
+
+四个环形目标由 `/har/orbit/target_poses` 显示。人体朝向改变时，slot 0/1/2/3 的 map 坐标会随之旋转；默认 `270;0;90;180` 表示 slot 1 在人体正前方，slot 0/2 在左右两侧，slot 3 在后方。若 RViz 窗口已经打开，重启 RViz 后才能读取新增的工具和显示项。
+
+确认 RViz 中的目标和日志都正确后，才把表中的 `dry_run` 改为 `false`，或者明确执行 `./scripts/start_orbit_system.sh --live`。移动期间 Follow 保持关闭，rosbot_1 完成后才允许 rosbot_2 开始；机器人不在移动时 Follow 自动开启，但它只发布原地转向：Follow 控制器固定 `linear.x=0`，只使用 `angular.z` 调整视角，不会让机器人平移。最终 `cmd_vel` 仍由 arbiter 仲裁，Nav2 移动优先级高于 Follow。双机 VPOCLIP 融合本身始终使用两边最新结果，不等待移动完成。`settle_seconds=3.0` 仍用于落位后的识别周期/主动视角反馈标记。
 
 ## 下次启动
 
