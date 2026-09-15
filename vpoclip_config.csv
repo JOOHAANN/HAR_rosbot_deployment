@@ -1,0 +1,72 @@
+key,value,description
+config,config/config_runtime.yaml,CLIPGCN runtime YAML for the current 55-class model
+class_split_dir,config/class_splits/strict45_10,45 seen plus 10 held-out classes from RESULTS.md
+class_config,realtime_class_config.csv,Editable enabled and seen/unseen action table
+candidate_scope,all,Rank over enabled seen and unseen classes
+unseen_score_scale,1.1,Multiplier for unseen scores before ranking
+clipgcn_checkpoint,vendor/HAR_reproduction/ws/VPOCLIP_plus_full/work_dir/merged45_10_groupAB/selected_stage_b/last_model.pth,Selected VPOCLIP checkpoint
+runtime_device,config,Use config_runtime.yaml runtime.device and keep RTMPose device independent
+pose_source,rtmpose,COCO-17 RTMPose input expected by the CTR-GCN checkpoint
+rtmpose_mode,balanced,RTMPose model pair used by extraction
+rtmpose_backend,onnxruntime,RTMPose inference backend
+rtmpose_device,cuda,Run both VPOCLIP RTMPose detector and pose inference with the CUDA execution provider
+rtmpose_det,vendor/HAR_reproduction/.cache/rtmlib/hub/checkpoints/yolox_m_8xb8-300e_humanart-c2c7a14a.onnx,Local RTMPose detector
+rtmpose_pose,vendor/HAR_reproduction/.cache/rtmlib/hub/checkpoints/rtmpose-m_simcc-body7_pt-body7_420e-256x192-e48f03d0_20230504.onnx,Local RTMPose pose model
+frames,13,Must stay 13 for this checkpoint
+temporal_strategy,uniform3s,Uniform temporal sampling over a three-second window
+uniform_window_seconds,3,Window length for uniform3s
+short_window_seconds,2,Used only by short and short-long strategies
+long_window_seconds,4,Used only by short-long strategy
+long_rerank_top_k,5,Used only by short-long strategy
+predict_every,1,Run one recognition pass every captured frame
+top_k,1,Number of displayed ranked actions
+display_filter_window,10,Majority-vote smoothing window for displayed predictions
+decision_entropy_threshold,0.95,Show a decision only below this normalized entropy
+decision_temperature,0.05,Temperature used by the decision entropy gate
+cudnn_benchmark,true,Enable fixed-size CUDA convolution benchmarking
+x3d_root,X3D,X3D source checkout
+x3d_config,X3D/configs/x3d-s_clipgcn_tensor_cross_subject_70_10_20_182.yaml,X3D architecture config
+x3d_checkpoint,vendor/HAR_reproduction/ws/X3D_full/outputs/etri_allviews_cs45_merged_groupAB_7000/model_best.pth,X3D checkpoint
+x3d_layer,s5,X3D feature hook layer
+ctrgcn_root,CTR-GCN_17,COCO-17 CTR-GCN source checkout
+ctrgcn_config,CTR-GCN_17/config/etri-coco17/ctrgcn_joint_coco17_13.yaml,CTR-GCN architecture config
+ctrgcn_weights,vendor/HAR_reproduction/ws/CTR-GCN_17_full/work_dir/etri_coco17/allviews_cs45_merged_groupAB/runs-51-4029.pt,CTR-GCN checkpoint
+ctrgcn_hook_layer,l4,CTR-GCN feature hook layer
+yolo_repo,yolov5,YOLOv5 source checkout
+yolo_weights,vendor/HAR_reproduction/ws/yolov5_full/best.pt,Custom-50 YOLO checkpoint
+yolo_size,640,YOLO inference size
+yolo_conf,0.25,YOLO confidence threshold
+yolo_iou,0.45,YOLO NMS IoU threshold
+yolo_half,true,Use FP16 for YOLO on CUDA
+yolo_detect_every,1,Run YOLO every captured frame
+no_yolo,false,Disable object maps when true
+hide_person_boxes,false,Hide person boxes in the GUI when true
+object_grid_size,6,Object-map grid size
+object_value,presence,Object-map value mode
+object_max_distance_weight,10.0,Relative-distance weighting for object maps
+display,false,Headless by default; start_vpoclip.sh forces the GUI on
+display_width,1280,GUI width in pixels
+display_height,0,Zero preserves the camera aspect ratio
+image_transport,compressed,ROS camera transport
+image_topic,,Optional absolute ROS image topic; empty uses the robot namespace default
+ros_qos_reliability,best-effort,ROS camera subscription QoS
+ros_wait_timeout,3600,Seconds to wait for a camera frame
+ros_node_name,har_vpoclip_recognizer,Base ROS node name
+window_name,CLIPGCN {namespace},OpenCV window name; {namespace} is replaced per robot
+prediction_topic,,Optional absolute JSON prediction topic; empty uses /<robot>/vpoclip/prediction
+fusion_display_enabled,true,Show the continuously fused two-view result in the configured robot window
+fusion_display_robot,rosbot_1,Robot window that displays the fused result
+fusion_display_topic,/har/final_action,ROS topic carrying the continuously fused result
+fusion_display_stale_seconds,15.0,Mark the last fused result stale after this many seconds without an update
+enable_person_follow_output,true,Publish follow detections; controller remains disabled until coordinator enables it
+person_detection_topic,,Optional absolute follow output topic
+person_detection_frame_id,,Optional follow output frame ID
+person_confidence_threshold,0.35,Minimum person confidence for follow output
+person_lock_iou_threshold,0.15,IoU threshold for follow target lock
+person_max_center_jump,0.20,Maximum normalized target center jump
+person_max_lost_frames,5,Frames tolerated before releasing a follow target
+all_classes_seen,false,Optional override; normally keep false for strict45_10
+seen_classes,,Optional class-ID override; empty uses realtime_class_config.csv
+unseen_classes,,Optional class-ID override; empty uses realtime_class_config.csv
+exclude_classes,,Optional extra class IDs to remove from ranking
+allow_cpu,false,Allow CPU fallback when the YAML requests CUDA

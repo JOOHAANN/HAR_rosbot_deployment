@@ -1,0 +1,60 @@
+# CTR-GCN on RTMPose COCO-17 skeletons (x, y, score), 13 uniform frames.
+# Strict 50/5 ZSL backbone on the canonical subject split: 45 VPOCLIP train,
+# 25 DQN reserve, 10 validation, and 20 test subjects. It replaces
+# 12 points when the robot's RGB estimator feeds it.
+work_dir: ./work_dir/etri_coco17/ctrgcn_joint_coco17_13_cs45_zsl50_5
+
+# feeder
+feeder: feeders.feeder_coco17.Feeder
+train_feeder_args:
+  data_path: data/etri_coco17/ETRI_CS_45_25_10_20_rtmpose_coco17_13.npz
+  split: train
+  exclude_classes: [9, 10, 11, 17, 49]
+  # 13 stored frames are upsampled to 64 inside valid_crop_resize, matching
+  # the Kinect run: the multi-scale TCN needs the longer axis to work.
+  window_size: 64
+  p_interval: [0.5, 1]
+  random_flip: True
+  noise_std: 0.01
+  debug: False
+
+test_feeder_args:
+  data_path: data/etri_coco17/ETRI_CS_45_25_10_20_rtmpose_coco17_13.npz
+  split: val
+  exclude_classes: [9, 10, 11, 17, 49]
+  window_size: 64
+  p_interval: [0.95]
+  debug: False
+
+# model
+model: model.ctrgcn.Model
+model_args:
+  num_class: 55
+  num_point: 17
+  num_person: 2
+  graph: graph.coco17.Graph
+  graph_args:
+    labeling_mode: 'spatial'
+
+# optim
+weight_decay: 0.0004
+base_lr: 0.1
+lr_decay_rate: 0.1
+step: [35, 55]
+warm_up_epoch: 5
+amp: True
+cudnn_benchmark: True
+cudnn_deterministic: False
+
+# training
+device: [0]
+batch_size: 512
+test_batch_size: 512
+num_worker: 16
+pin_memory: True
+persistent_workers: True
+prefetch_factor: 4
+eval_interval: 1
+save_epoch: 0
+num_epoch: 65
+nesterov: True

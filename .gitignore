@@ -1,0 +1,61 @@
+# Local configuration and secrets
+.env
+!.env.example
+*.local
+*.secret
+*.key
+*.pem
+
+# Python caches and local tooling state
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+
+# Runtime output and machine-specific symlinks
+logs/
+runtime_cache/
+runtime_compat/
+**/.cache/
+**/logs/
+
+# Datasets, experiment outputs, and generated metadata
+**/data/
+**/work_dir/
+**/outputs/
+**/runs/
+**/checkpoints/
+**/*cache*/
+**/*.jsonl
+
+# Model and binary artifacts (GitHub has a 100 MB per-file limit)
+*.pt
+*.pth
+*.onnx
+*.ckpt
+*.safetensors
+*.npz
+*.npy
+*.bin
+*.so
+
+# Large media and archives
+*.mp4
+*.webm
+*.avi
+*.mov
+*.mkv
+*.bag
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.7z
+*.rar
+
+# Existing local-only files
+*.bak*
+*.swp
+*.tmp

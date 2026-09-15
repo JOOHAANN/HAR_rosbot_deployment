@@ -1,0 +1,13 @@
+.git
+.gitignore
+__pycache__
+*.pyc
+logs
+runtime_compat
+runtime_cache
+*.bak*
+*.mp4
+*.webm
+*.png
+*.jpg
+*.jpeg

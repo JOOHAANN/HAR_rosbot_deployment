@@ -1,0 +1,58 @@
+key,value,description
+dry_run,true,Initial safety mode; true prints targets and never sends Nav2 goals
+selection_mode,rl,Active-view choice: rl random or cyclic; four slots produce six unordered 4-choose-2 pairs
+robot_namespaces,rosbot_1;rosbot_2,Robot order; rosbot_1 is always scheduled first
+map_name,home,Map name loaded by the existing jazzy-rosbot navigation container
+initial_pose_config,config/robot_initial_poses.csv,Map-aware persistent initial poses for localization; enabled rows are applied on Nav2 restart
+robot_rgb_topics,/rosbot_1/camera/rgb/image_raw/compressed;/rosbot_2/camera/rgb/image_raw/compressed,Physical RGB topics in the same order as robot_namespaces
+ring_radius_m,1.5,Human-centered ring radius in meters
+ring_angles_deg,0;90;180;270,Four map-frame ring bearings; angle zero is +x in map
+initial_robot_slots,0;1,Current ring slots assumed before the first physical move
+bootstrap_pair,0;2,Initial pair if the active-view selector has not answered yet
+view_topics,/rosbot_1/camera/rgb/image_raw/compressed;/rosbot_2/camera/rgb/image_raw/compressed;/har/view/slot_2/compressed;/har/view/slot_3/compressed,Four logical view topics used in diagnostics; physical topics are routed by slot
+view_image_transport,compressed,Physical RGB transport used by the active-view selector
+active_view_rate_hz,1.0,Active-view decision rate in Hz
+active_view_variant,full_depth19,Exported DDQN variant
+active_view_policy_checkpoint,vendor/HAR_reproduction/ws/VPOCLIP_plus_full/work_dir/dual_robot_depth_ddqn_strict45_5/models/full_depth19/seed_20260911/best.pt,Exported DDQN checkpoint
+active_view_orientation_checkpoint,vendor/RTMPose_orientation_MLP/work_dir/rtmpose_orientation_mlp/best.pt,RTMPose orientation checkpoint
+active_view_policy_device,cuda,Device for the exported DDQN policy
+active_view_rtmpose_device,cuda,Run the separate active-view RTMPose session with the CUDA execution provider
+active_view_rtmpose_mode,balanced,RTMPose detector/pose profile for active-view features
+active_view_rtmpose_backend,onnxruntime,RTMPose backend for active-view features
+active_view_random_seed,20260915,Seed used by random_pair
+baseline_hold_seconds,3.0,Seconds for which random/cyclic keeps a selected pair
+active_view_allow_unobserved_candidates,true,Allow known ring slots before they have been visited
+active_view_wait_for_trigger,true,After the initial choice wait for the post-fusion trigger
+initial_selection_timeout_sec,8,Seconds to wait for the first active-view decision
+target_tolerance_m,0.15,Arrival/ring-entry tolerance in meters
+arc_step_deg,15,Maximum angular spacing between physical arc waypoints
+allow_radial_acquire,true,Allow the one-time approach from an arbitrary start radius to the ring
+min_robot_separation_m,0.8,Collision guard for current and planned robot poses
+person_timeout_sec,1.0,Maximum age of a follow detection used as human center
+depth_topic_suffix,camera/depth/image,Metric depth Image topic suffix
+camera_info_topic_suffix,camera/depth/camera_info,Depth CameraInfo topic suffix
+base_frame_suffix,base_link,Robot base TF frame suffix
+human_frame,map,Frame in which ring targets are published
+settle_seconds,3.0,Wait after both robots arrive before opening recognition
+recognition_timeout_sec,10.0,Maximum wait for both fresh VPOCLIP results
+prediction_topic_1,/rosbot_1/vpoclip/prediction,VPOCLIP result stream used by fusion
+prediction_topic_2,/rosbot_2/vpoclip/prediction,VPOCLIP result stream used by fusion
+fusion_timeout_sec,10.0,Maximum wait for both fresh VPOCLIP results in one cycle
+fusion_robot1_weight,1.0,Fusion weight for rosbot_1
+fusion_robot2_weight,1.0,Fusion weight for rosbot_2
+fusion_top_k,5,Number of fused candidates retained in the output event
+fusion_continuous,true,Continuously fuse the latest two VPOCLIP predictions even during robot motion
+selected_view_topic,/har/selected_view_pair,Active-view RL/random/cyclic output
+slot_map_topic,/har/orbit/robot_slots,Current physical robot-to-ring-slot mapping
+state_topic,/har/orbit/state,Coordinator state and safety diagnostics
+plan_topic,/har/orbit/plan,JSON target and arc-waypoint plan
+target_pose_topic,/har/orbit/target_poses,Four target poses for RViz/PoseArray viewers
+recognition_cycle_topic,/har/orbit/recognition_cycle,Trigger emitted after the 3-second settle wait
+select_next_topic,/har/orbit/select_next,Trigger for the next active-view decision
+fusion_topic,/har/final_action,Fused action output consumed after each recognition cycle
+follow_service_suffix,person_follow_controller/set_enabled,Existing follow enable/disable service
+follow_enabled_after_settle,true,Enable existing follow controller only after both robots settle
+fusion_score_field,candidate_ranking_scores,Score vector used by the ROS fusion node
+dry_run_once,true,Stop after the first printed cycle unless overridden by --continuous
+dry_run_update_slot_mapping,false,In dry-run keep the physical robot-to-slot map unchanged because no robot actually moves
+active_view_input_stale_seconds,3.0,Pause active-view selection when either physical RGB stream has no fresh frame for this many seconds

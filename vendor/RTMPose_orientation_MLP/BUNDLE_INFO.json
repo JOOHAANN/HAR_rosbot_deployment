@@ -1,0 +1,15 @@
+{
+  "bundle": "RTMPose_orientation_MLP_strict50_5",
+  "source": "RTMPose-17 (x,y,score) -> normalized 51-D -> 128 -> 64 -> 8",
+  "target": "ETRI 3-D skeleton body-forward yaw, eight 45-degree circular bins",
+  "frame_index": 6,
+  "test_samples": 11326,
+  "seed_checkpoints": 30,
+  "seed_range": [
+    20260901,
+    20260930
+  ],
+  "raw_dataset_included": false,
+  "raw_rtmpose_arrays_included": false,
+  "onnx_models_included": true
+}

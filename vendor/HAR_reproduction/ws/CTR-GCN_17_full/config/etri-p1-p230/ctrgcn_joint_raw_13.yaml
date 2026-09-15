@@ -1,0 +1,58 @@
+work_dir: ./work_dir/etri_p1_p230_13frames/xsub/ctrgcn_joint_raw
+
+# feeder
+feeder: feeders.feeder_ntu.Feeder
+train_feeder_args:
+  data_path: data/etri/ETRI_P1_P230_CS_raw_uniform13.npz
+  split: train
+  debug: False
+  random_choose: False
+  random_shift: False
+  random_move: False
+  window_size: 64
+  normalization: False
+  random_rot: False
+  p_interval: [0.5, 1]
+  vel: False
+  bone: False
+
+test_feeder_args:
+  data_path: data/etri/ETRI_P1_P230_CS_raw_uniform13.npz
+  split: test
+  window_size: 64
+  p_interval: [0.95]
+  vel: False
+  bone: False
+  debug: False
+
+# model
+model: model.ctrgcn.Model
+model_args:
+  num_class: 55
+  num_point: 25
+  num_person: 2
+  graph: graph.ntu_rgb_d.Graph
+  graph_args:
+    labeling_mode: 'spatial'
+
+# optim
+weight_decay: 0.0004
+base_lr: 0.1
+lr_decay_rate: 0.1
+step: [35, 55]
+warm_up_epoch: 5
+amp: True
+cudnn_benchmark: True
+cudnn_deterministic: False
+
+# training
+device: [0]
+batch_size: 128
+test_batch_size: 128
+num_worker: 8
+pin_memory: True
+persistent_workers: True
+prefetch_factor: 2
+eval_interval: 5
+num_epoch: 65
+nesterov: True

@@ -1,0 +1,55 @@
+services:
+  clipgcn:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: "${HAR_BASE_IMAGE:-clipgcn-rosbot:jazzy}"
+    image: har-rosbot-deployment:latest
+    container_name: har-rosbot-deployment
+    network_mode: host
+    ipc: host
+    gpus: all
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    environment:
+      DISPLAY: "${DISPLAY:-:0}"
+      QT_X11_NO_MITSHM: "1"
+      YOLO_CONFIG_DIR: /tmp/Ultralytics
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: all
+      ROS_DOMAIN_ID: "${ROS_DOMAIN_ID:-10}"
+      RMW_IMPLEMENTATION: rmw_cyclonedds_cpp
+      CYCLONEDDS_URI: "${CYCLONEDDS_URI:-<CycloneDDS><Domain><General><Interfaces><NetworkInterface name=\"wlp2s0\"/></Interfaces></General><Discovery><Peers><Peer address=\"10.186.13.100\"/><Peer address=\"10.186.13.101\"/><Peer address=\"10.186.13.30\"/></Peers></Discovery></Domain></CycloneDDS>}"
+      HAR_ROBOT_NAMESPACE: "${HAR_ROBOT_NAMESPACE:-rosbot_1}"
+      HAR_VPOCLIP_ROBOT_NAMESPACES: "${HAR_VPOCLIP_ROBOT_NAMESPACES:-rosbot_1,rosbot_2}"
+      # Empty defaults let config/orbit_system_config.csv own active-view
+      # movement settings. Export an environment variable to override one.
+      HAR_VIEW_TOPICS: "${HAR_VIEW_TOPICS-}"
+      HAR_ENABLE_VIEW_POLICY: "${HAR_ENABLE_VIEW_POLICY:-1}"
+      # Empty means the VPOCLIP table is authoritative. The GUI and hardware
+      # wrappers pass explicit overrides when they need a different mode.
+      HAR_ENABLE_FOLLOW: "${HAR_ENABLE_FOLLOW-}"
+      HAR_DISPLAY: "${HAR_DISPLAY-}"
+      HAR_RUNTIME_DEVICE: "${HAR_RUNTIME_DEVICE-}"
+      HAR_RECOGNIZER_RTMPOSE_DEVICE: "${HAR_RECOGNIZER_RTMPOSE_DEVICE-}"
+      HAR_VIEW_RTMPOSE_DEVICE: "${HAR_VIEW_RTMPOSE_DEVICE-}"
+      HAR_POLICY_DEVICE: "${HAR_POLICY_DEVICE-}"
+      HAR_VIEW_POLICY_RATE_HZ: "${HAR_VIEW_POLICY_RATE_HZ-}"
+      HAR_VIEW_SELECTION_MODE: "${HAR_VIEW_SELECTION_MODE-}"
+      HAR_VIEW_RANDOM_SEED: "${HAR_VIEW_RANDOM_SEED-}"
+      HAR_VIEW_BASELINE_HOLD_SECONDS: "${HAR_VIEW_BASELINE_HOLD_SECONDS-}"
+      HAR_ROS_WAIT_TIMEOUT: "${HAR_ROS_WAIT_TIMEOUT-}"
+      HAR_IMAGE_TRANSPORT: "${HAR_IMAGE_TRANSPORT-}"
+      HAR_ROS_QOS_RELIABILITY: "${HAR_ROS_QOS_RELIABILITY-}"
+    volumes:
+      - .:/workspace/CLIPGCN
+      - "${PERSON_FOLLOW_WS:-/home/youhan/HAR/person_follow_ws}:/workspace/person_follow_ws"
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - har-rosbot-rtmlib-cache:/root/.cache/rtmlib
+    working_dir: /workspace/CLIPGCN
+    command: ["sleep", "infinity"]
+
+volumes:
+  har-rosbot-rtmlib-cache:

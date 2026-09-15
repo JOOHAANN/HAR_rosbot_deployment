@@ -1,0 +1,46 @@
+{
+  "cyclic_adjacent_pair": {
+    "accuracy": 0.0,
+    "mean_movement_cost": 0.0
+  },
+  "cyclic_pair": {
+    "accuracy": 0.0,
+    "mean_movement_cost": 0.0
+  },
+  "full_depth19": {
+    "accuracy": 0.0,
+    "mean_movement_cost": 0.0
+  },
+  "full_lstm19": {
+    "accuracy": 0.0,
+    "mean_movement_cost": 0.0
+  },
+  "human_only": {
+    "accuracy": 0.0,
+    "mean_movement_cost": 0.0
+  },
+  "human_only_lstm": {
+    "accuracy": 0.0,
+    "mean_movement_cost": 0.0
+  },
+  "human_orientation_only": {
+    "accuracy": 0.0,
+    "mean_movement_cost": 0.0
+  },
+  "human_trajectory_only": {
+    "accuracy": 0.0,
+    "mean_movement_cost": 0.0
+  },
+  "object_only_depth19": {
+    "accuracy": 0.0,
+    "mean_movement_cost": 0.0
+  },
+  "object_only_lstm19": {
+    "accuracy": 0.0,
+    "mean_movement_cost": 0.0
+  },
+  "random_pair": {
+    "accuracy": 0.0,
+    "mean_movement_cost": 0.0
+  }
+}

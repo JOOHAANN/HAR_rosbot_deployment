@@ -1,0 +1,3 @@
+map_name,robot,enabled,x_m,y_m,yaw_deg,description
+home,rosbot_1,false,0.0,0.0,0.0,Fill from the measured map pose then set enabled=true
+home,rosbot_2,false,0.0,0.0,0.0,Fill from the measured map pose then set enabled=true
