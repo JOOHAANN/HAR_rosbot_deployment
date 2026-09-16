@@ -75,8 +75,9 @@ class TrimodalContrastiveDataset(Dataset):
                  augment=None):
         self.data_dir = Path(data_dir)
         self.prefix = prefix
-        # 消融: data.zero_streams 指定要置零的模态 (video/pose/object)。
-        # pose 置零时连带 joint_xy, 因为 joint_xy 只服务于 pose 分支的空间放置。
+        # Ablation: data.zero_streams selects the modalities to zero out
+        # (video/pose/object). Zeroing pose also zeros joint_xy, since joint_xy
+        # only serves the spatial placement of the pose branch.
         self.zero_streams = set(zero_streams or [])
         unknown = self.zero_streams - {"video", "pose", "object"}
         if unknown:
