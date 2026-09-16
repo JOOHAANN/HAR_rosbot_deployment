@@ -115,7 +115,7 @@ class MultiScale_TemporalConv(nn.Module):
             nn.BatchNorm2d(branch_channels),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=(3,1), stride=(stride,1), padding=(1,0)),
-            nn.BatchNorm2d(branch_channels)  # 为什么还要加bn
+            nn.BatchNorm2d(branch_channels)  # why add another BN here
         ))
 
         self.branches.append(nn.Sequential(

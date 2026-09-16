@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/11/3 下午2:03
+@date: 2020/11/3 2:03 PM
 @file: build_x3d.py
 @author: zj
 @description: 
@@ -26,45 +26,45 @@ def _resnet(cfg, block_layer):
     act_layer = get_act(cfg.MODEL.ACT_LAYER)
 
     model = ResNet3d(
-        # 输入通道数
+        # number of input channels
         in_channels=cfg.MODEL.BACKBONE.IN_CHANNELS,
-        # Stem通道数
+        # number of stem channels
         base_channel=cfg.MODEL.BACKBONE.BASE_CHANNEL,
-        # 第一个卷积层kernel_size
+        # kernel_size of the first conv layer
         conv1_kernel=cfg.MODEL.BACKBONE.CONV1_KERNEL,
-        # 第一个卷积层步长
+        # stride of the first conv layer
         conv1_stride=cfg.MODEL.BACKBONE.CONV1_STRIDE,
-        # 第一个卷积层零填充
+        # zero padding of the first conv layer
         conv1_padding=cfg.MODEL.BACKBONE.CONV1_PADDING,
-        # 是否使用第一个池化层
+        # whether to use the first pooling layer
         with_pool1=cfg.MODEL.BACKBONE.WITH_POOL1,
-        # 是否使用第二个池化层
+        # whether to use the second pooling layer
         with_pool2=cfg.MODEL.BACKBONE.WITH_POOL2,
-        # 各层块个数，以R50为例
+        # number of blocks per stage, e.g. R50
         stage_blocks=cfg.MODEL.BACKBONE.STAGE_BLOCKS,
-        # 各层Block第一个卷积层的输出通道数
+        # output channels of the first conv layer in each stage
         res_planes=cfg.MODEL.BACKBONE.RES_PLANES,
-        # 膨胀系数，以Bottleneck为例
+        # expansion factor, e.g. Bottleneck
         expansion=cfg.MODEL.BACKBONE.EXPANSION,
-        # 空间步长
+        # spatial stride
         spatial_strides=cfg.MODEL.BACKBONE.SPATIAL_STRIDES,
-        # 是否进行膨胀
+        # whether to inflate
         inflates=cfg.MODEL.BACKBONE.INFLATES,
-        # 膨胀类型
+        # inflation type
         inflate_style=cfg.MODEL.BACKBONE.INFLATE_STYLE,
-        # 卷积层类型
+        # conv layer type
         conv_layer=conv_layer,
-        # 池化层类型
+        # pooling layer type
         pool_layer=pool_layer,
-        # 归一化层类型
+        # norm layer type
         norm_layer=norm_layer,
-        # 激活层类型
+        # activation layer type
         act_layer=act_layer,
-        # 块类型
+        # block type
         block_layer=block_layer,
-        # 是否进行残差分支零初始化
+        # whether to zero-init the residual branch
         zero_init_residual=cfg.MODEL.BACKBONE.ZERO_INIT_RESIDUAL,
-        # 是否进行partialBN
+        # whether to apply partial BN
         partial_bn=cfg.MODEL.BACKBONE.PARTIAL_BN,
     )
     return model

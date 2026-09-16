@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/10/19 下午2:38
+@date: 2020/10/19 2:38 PM
 @file: crossentropy_loss.py
 @author: zj
 @description: 

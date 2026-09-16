@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/10/4 下午3:31
+@date: 2020/10/4 3:31 PM
 @file: misc.py
 @author: zj
 @description: 

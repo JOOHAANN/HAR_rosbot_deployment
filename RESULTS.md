@@ -11,8 +11,8 @@ The table combines the two previously reported results into one view. It reports
 | Model | Unseen accuracy | 95% CI | Delta vs. Random (percentage points) | Delta vs. Cyclic (percentage points) | Movement cost | 95% CI | Degree-equivalent movement | Movement / Random |
 |---|---:|:---:|---:|---:|---:|:---:|---:|---:|
 | Random | 64.56% | [64.07, 65.04] | -- | -- | 0.2698 | [0.2647, 0.2749] | 48.56° [47.65°, 49.48°] | 100.0% |
-| Cyclic (non-adjacent / 隔位循环) | 64.95% | [64.57, 65.32] | +0.39 | -- | 0.2476 | [0.2431, 0.2520] | 44.56° [43.76°, 45.37°] | 91.8% |
-| Cyclic (adjacent / 相邻循环) | 64.98% | [64.68, 65.28] | +0.42 | +0.03 | 0.2798 | [0.2752, 0.2844] | 50.36° [49.54°, 51.19°] | 103.7% |
+| Cyclic (non-adjacent) | 64.95% | [64.57, 65.32] | +0.39 | -- | 0.2476 | [0.2431, 0.2520] | 44.56° [43.76°, 45.37°] | 91.8% |
+| Cyclic (adjacent) | 64.98% | [64.68, 65.28] | +0.42 | +0.03 | 0.2798 | [0.2752, 0.2844] | 50.36° [49.54°, 51.19°] | 103.7% |
 | **Full DQN (DDQN): human + object + relative depth** | **65.33%** | **[64.95, 65.70]** | **+0.77** | **+0.38** | **0.0737** | **[0.0713, 0.0762]** | **13.27° [12.83°, 13.71°]** | **27.3%** |
 | Object-only DQN (with relative depth) | 65.22% | [64.81, 65.64] | +0.66 | +0.27 | 0.0671 | [0.0642, 0.0701] | 12.09° [11.56°, 12.61°] | 24.9% |
 | Human trajectory-only DQN | 65.06% | [64.76, 65.36] | +0.50 | +0.11 | 0.1293 | [0.1263, 0.1324] | 23.28° [22.73°, 23.83°] | 47.9% |
@@ -22,7 +22,7 @@ The table combines the two previously reported results into one view. It reports
 | Human orientation-only DQN | 64.46% | [64.18, 64.73] | -0.10 | -0.49 | 0.2241 | [0.2194, 0.2288] | 40.34° [39.50°, 41.19°] | 83.1% |
 | Human-only DQN | 64.25% | [63.99, 64.51] | -0.31 | -0.70 | 0.1444 | [0.1403, 0.1486] | 26.00° [25.25°, 26.74°] | 53.5% |
 
-`Delta vs. Random` and `Delta vs. Cyclic` are accuracy differences in percentage points. The cyclic reference is the non-adjacent/隔位 cyclic policy. Movement cost is the sum of the two robots' normalized angular costs after the minimum-cost robot-to-target assignment; it is not a distance in metres. The degree-equivalent value is `180 x movement cost`.
+`Delta vs. Random` and `Delta vs. Cyclic` are accuracy differences in percentage points. The cyclic reference is the non-adjacent cyclic policy. Movement cost is the sum of the two robots' normalized angular costs after the minimum-cost robot-to-target assignment; it is not a distance in metres. The degree-equivalent value is `180 x movement cost`.
 
 The Full DQN is the best recognition model in this run: it reaches 65.33%, which is 0.77 percentage points above Random and 0.38 points above the non-adjacent cyclic policy. Its movement cost is 0.0737, or 27.3% of Random, corresponding to a 72.7% reduction. The object-only DQN has slightly lower accuracy but the smallest movement cost among the learned policies.
 

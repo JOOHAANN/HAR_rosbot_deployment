@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/11/3 下午3:15
+@date: 2020/11/3 3:15 PM
 @file: x3d_head.py
 @author: zj
 @description: 

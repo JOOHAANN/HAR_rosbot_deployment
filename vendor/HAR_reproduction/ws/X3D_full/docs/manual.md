@@ -1,11 +1,11 @@
 
-# 使用手册
+# User Manual
 
-## 预配置
+## Pre-configuration
 
 
 
-## 训练
+## Training
 
 ```
 $ python 

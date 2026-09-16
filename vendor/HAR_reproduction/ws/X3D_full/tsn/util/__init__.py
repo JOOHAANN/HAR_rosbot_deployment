@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/8/21 下午8:17
+@date: 2020/8/21 8:17 PM
 @file: __init__.py.py
 @author: zj
 @description: 

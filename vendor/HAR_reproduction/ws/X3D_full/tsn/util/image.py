@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/8/28 下午8:52
+@date: 2020/8/28 8:52 PM
 @file: image.py
 @author: zj
 @description: 

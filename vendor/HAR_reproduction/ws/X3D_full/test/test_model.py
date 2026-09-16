@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/10/19 下午5:04
+@date: 2020/10/19 5:04 PM
 @file: test_model.py
 @author: zj
 @description: 

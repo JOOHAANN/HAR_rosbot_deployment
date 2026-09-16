@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/9/25 下午1:58
+@date: 2020/9/25 1:58 PM
 @file: resnet3d.py
 @author: zj
 @description: 

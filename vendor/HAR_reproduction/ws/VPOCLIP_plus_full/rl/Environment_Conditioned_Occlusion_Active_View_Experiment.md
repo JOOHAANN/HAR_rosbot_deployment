@@ -1,23 +1,24 @@
-# 改进方案：Environment-Conditioned Active View Policy with View-Consistent Synthetic Occlusion
+# Improved Plan: Environment-Conditioned Active View Policy with View-Consistent Synthetic Occlusion
 
-版本建议：`multistep_environment_occlusion_policy_v2`
+Suggested version: `multistep_environment_occlusion_policy_v2`
 
-## 0. 本轮目标
+## 0. Goals for This Round
 
-本轮不要继续把问题定义成：
-
-```text
-“这个动作类别是什么 -> 应该移动到哪个视角？”
-```
-
-新的核心问题是：
+Do not keep defining the problem this round as:
 
 ```text
-“当前人体在哪里、怎么运动、周围遮挡/物体在哪里、当前相机在哪里
- -> 移动到哪个方向能够获得更完整、更互补的观察？”
+"What action class is this -> which viewpoint should we move to?"
 ```
 
-因此策略学习的是：
+The new core problem is:
+
+```text
+"Where is the human now, how are they moving, where are the occluders/objects,
+and where is the current camera
+-> which direction of movement yields a more complete, more complementary observation?"
+```
+
+The policy therefore learns:
 
 \[
 \boxed{
@@ -27,7 +28,7 @@
 }
 \]
 
-而不是：
+rather than:
 
 \[
 \boxed{
@@ -37,75 +38,75 @@
 }
 \]
 
-最终目标仍然是 unseen/open-vocabulary HAR，但 viewpoint policy 必须尽可能 **class-agnostic**。
+The final goal remains unseen/open-vocabulary HAR, but the viewpoint policy must be as **class-agnostic** as possible.
 
 ---
 
-# 1. 为什么现在值得做 Synthetic Occlusion
+# 1. Why Synthetic Occlusion Is Worth Doing Now
 
-当前 ETRI 完整数据集本身的拍摄目的就是清楚记录老人行为，真实视频中严重遮挡较少。
+The full ETRI dataset was recorded specifically to clearly capture elderly behavior, so severe occlusion is rare in the real videos.
 
-此前实验已经反复出现：
+Previous experiments repeatedly showed:
 
 ```text
-Random 与 learned policy 差距很小
-大量样本 view-insensitive
-Oracle 明显高于 Random，但最佳视角难以从当前 observation 预测
+small gap between Random and the learned policy
+a large fraction of samples are view-insensitive
+Oracle is clearly above Random, but the best viewpoint is hard to predict from the current observation
 ```
 
-一个合理假设是：
+A reasonable hypothesis is:
 
 \[
 \boxed{
-\text{原始 ETRI 缺少足够强的 active-perception pressure}
+\text{the original ETRI lacks sufficiently strong active-perception pressure}
 }
 \]
 
-也就是说，在大量 episode 中：
+In other words, in a large fraction of episodes:
 
 ```text
-换左边
-换右边
-换后面
+switch to the left
+switch to the right
+switch to the back
 ```
 
-都能看到差不多的信息。
+all reveal roughly the same information.
 
-于是：
+Thus:
 
 \[
 Q(s,a_1)\approx Q(s,a_2)\approx Q(s,a_3)
 \]
 
-policy 很难获得明确监督。
+and the policy receives little discriminative supervision.
 
-本轮通过 **view-consistent synthetic occlusion** 人为构造：
+This round uses **view-consistent synthetic occlusion** to artificially create:
 
 ```text
-当前视角受遮挡
-侧向视角遮挡减弱
-另一个方向重新获得 hand/object/body evidence
+occlusion at the current viewpoint
+reduced occlusion from a side viewpoint
+hand/object/body evidence recovered from another direction
 ```
 
-从而验证：
+and thereby tests:
 
-> 如果环境真的让“移动方向”决定 observability，当前 human/object/geometry policy 是否能够学到可迁移的空间策略？
+> If the environment genuinely makes observability depend on the direction of movement, can the current human/object/geometry policy learn a transferable spatial strategy?
 
 ---
 
-# 2. 本轮最重要的原则
+# 2. Most Important Principles for This Round
 
-## 2.1 不能做普通 Random Erasing
+## 2.1 Do Not Use Plain Random Erasing
 
-禁止只做：
+Forbidden: only doing
 
 ```text
 random black square
 random cutout
-每个 view 独立随机 mask
+independently random mask per view
 ```
 
-因为这种 augmentation 没有建立：
+Because this augmentation does not establish:
 
 \[
 \text{camera motion}
@@ -113,15 +114,15 @@ random cutout
 \text{occlusion change}
 \]
 
-的因果关系。
+as a causal relationship.
 
-如果 View0 的 mask 与 View1/View2/View3 完全独立随机，policy 无法从当前状态推断往哪边走。
+If the View0 mask is fully independent of View1/View2/View3, the policy cannot infer which direction to move from the current state.
 
 ---
 
-## 2.2 必须做 View-Consistent Occlusion
+## 2.2 View-Consistent Occlusion Is Required
 
-同一个 episode 只采样一个 virtual occluder：
+Sample only one virtual occluder per episode:
 
 ```text
 occluder bearing
@@ -132,21 +133,21 @@ target vertical region
 render style
 ```
 
-然后根据每个 camera 相对于人体的真实 `relative_angle` 生成不同程度的 2D 遮挡。
+Then generate 2D occlusion of varying degree according to each camera's true `relative_angle` with respect to the human.
 
-核心：
+Core idea:
 
 \[
 \boxed{
-\text{同一个虚拟障碍物，在不同 camera 下产生不同 occlusion}
+\text{the same virtual occluder produces different occlusion under different cameras}
 }
 \]
 
 ---
 
-# 3. 保留当前 trajectory-conditioned policy 的核心结构
+# 3. Keep the Core Structure of the Current Trajectory-Conditioned Policy
 
-当前 v1 中已经存在：
+Already present in v1:
 
 ```text
 person trajectory
@@ -157,20 +158,20 @@ history of observed views
 action mask
 ```
 
-本轮不要推翻这些设计。
+Do not overturn these designs this round.
 
-继续保持：
+Keep enforcing:
 
 ```text
 VPOCLIP frozen
-policy 不输入 action class ID
-policy 不输入 GT label
-policy 不输入 future candidate RGB
-policy 不输入 future candidate logits
-policy 不输入 future candidate object/pose
+policy does not take action class ID as input
+policy does not take the GT label as input
+policy does not take future candidate RGB as input
+policy does not take future candidate logits as input
+policy does not take future candidate object/pose as input
 ```
 
-新的 v2 主要增加：
+v2 mainly adds:
 
 ```text
 explicit observed occlusion/environment state
@@ -182,21 +183,21 @@ occlusion-aware training utility
 
 ---
 
-# 4. Phase 0：先构造 Synthetic Occlusion Benchmark，不训练 policy
+# 4. Phase 0: Build the Synthetic Occlusion Benchmark First; Do Not Train the Policy
 
-这是最重要的一步。
+This is the most important step.
 
-先回答：
+First answer:
 
-> synthetic occlusion 是否真的增加了视角选择价值？
+> Does synthetic occlusion genuinely increase the value of viewpoint selection?
 
-如果没有，就不要训练任何新网络。
+If not, do not train any new network.
 
 ---
 
-# 5. 使用现有 sample-level 相机方位
+# 5. Use the Existing Sample-Level Camera Bearings
 
-当前每个样本已经有：
+Each sample already has:
 
 ```text
 view_geometry[..., 0:2]
@@ -204,31 +205,31 @@ view_geometry[..., 0:2]
 [sin(relative_angle), cos(relative_angle)]
 ```
 
-不要使用固定 camera slot 语义。
+Do not use fixed camera slot semantics.
 
-每个 recording 中先恢复：
+For each recording, first recover:
 
 \[
 \theta_v = \operatorname{atan2}(\sin\theta_v,\cos\theta_v)
 \]
 
-得到每个有效 view 的 human-relative bearing。
+to obtain the human-relative bearing of each valid view.
 
-virtual occluder 也定义为 human-relative bearing：
+Define the virtual occluder also as a human-relative bearing:
 
 \[
 \theta_{occ}
 \]
 
-每个 episode 随机采样一次。
+Sampled once per episode.
 
 ---
 
-# 6. 第一版：2D Pseudo-Geometric Occlusion
+# 6. First Version: 2D Pseudo-Geometric Occlusion
 
-当前不要求完整 3D reconstruction。
+Full 3D reconstruction is not required at this stage.
 
-利用：
+Use:
 
 ```text
 human-relative camera angle
@@ -237,13 +238,13 @@ pose trajectory
 object trajectory
 ```
 
-构造一个近似几何一致的遮挡模型。
+to build an approximately geometry-consistent occlusion model.
 
 ---
 
 # 7. Occlusion Severity
 
-对 camera \(v\) 定义：
+For camera \(v\), define:
 
 \[
 \Delta\theta_v
@@ -251,7 +252,7 @@ object trajectory
 wrap(\theta_v-\theta_{occ})
 \]
 
-遮挡强度：
+Occlusion strength:
 
 \[
 r_v
@@ -263,32 +264,32 @@ r_{max}
 \right)
 \]
 
-解释：
+Interpretation:
 
 ```text
-camera 与 occluder bearing 接近
+camera bearing close to the occluder bearing
 -> severe occlusion
 
-camera 转到侧面
+camera turned to the side
 -> moderate occlusion
 
-camera 与 occluder bearing 差异很大
+camera bearing far from the occluder bearing
 -> weak/no occlusion
 ```
 
-建议第一版：
+Suggested for the first version:
 
 ```text
 sigma_occ = 35° ~ 55°
 ```
 
-不要直接固定一个值，放到 pseudo-unseen validation 上选择。
+Do not fix a single value directly; select it on pseudo-unseen validation.
 
 ---
 
 # 8. Occlusion Level
 
-至少构建三级 benchmark：
+Build at least a three-level benchmark:
 
 ### Mild
 
@@ -308,49 +309,49 @@ r_max ≈ 0.45 ~ 0.55
 r_max ≈ 0.65 ~ 0.75
 ```
 
-这里的比例不要简单理解成整张图面积。
+Do not interpret these ratios simply as a fraction of the whole image area.
 
-优先定义为：
+Define them preferably as:
 
 ```text
-person / interaction region 的遮挡比例
+the occluded fraction of the person / interaction region
 ```
 
 ---
 
-# 9. Mask 不要主要遮背景
+# 9. Masks Should Not Mainly Cover the Background
 
-目标区域必须和 human observation 有关系。
+The target region must be related to human observation.
 
-至少实现 3 类 occlusion target。
+Implement at least 3 types of occlusion target.
 
 ## A. Torso-centered
 
-根据 COCO17：
+Based on COCO17:
 
 ```text
 shoulders: 5, 6
 hips:      11, 12
 ```
 
-构造 torso bbox。
+construct a torso bbox.
 
-适合模拟：
+Suitable for simulating:
 
 ```text
-柜子
-桌边
-门框
-家具
+cabinet
+table edge
+door frame
+furniture
 ```
 
-挡住人体中部。
+Occludes the middle of the body.
 
 ---
 
 ## B. Upper-body / hand region
 
-利用：
+Use:
 
 ```text
 shoulder
@@ -359,7 +360,7 @@ wrist
 face/head proxy
 ```
 
-优先遮挡：
+Prioritize occluding:
 
 ```text
 hand
@@ -367,48 +368,44 @@ face
 upper torso
 ```
 
-因为很多 HAR 动作依赖这些区域。
+because many HAR actions depend on these regions.
 
 ---
 
 ## C. Hand-object interaction region
 
-使用当前 object trajectory：
+Use the current object trajectory:
 
 ```text
 [presence, x, y, confidence]
 ```
 
-对每帧寻找：
+For each frame, find the object that is:
 
 ```text
-离 left/right wrist 最近
-且 confidence 足够高
+closest to the left/right wrist
+with sufficiently high confidence
 ```
 
-的 object。
-
-构造：
+Construct a joint region of:
 
 ```text
 hand + nearest object
 ```
 
-联合 region。
-
-注意：
+Note:
 
 ```text
-不能使用 GT action class 来决定遮哪里
+the GT action class must not be used to decide where to mask
 ```
 
 ---
 
-# 10. Mask 的横向偏移也要随视角变化
+# 10. The Mask's Horizontal Offset Must Also Vary with Viewpoint
 
-不要只让 mask 面积变化。
+Do not only vary the mask area.
 
-定义 mask 相对人体中心的 horizontal offset：
+Define the mask horizontal offset relative to the person center:
 
 \[
 x_{offset,v}
@@ -416,17 +413,17 @@ x_{offset,v}
 k_x \sin(\Delta\theta_v)
 \]
 
-于是：
+Thus:
 
 ```text
-正面相对 occluder:
-mask 靠近人体中心
+facing the occluder:
+mask stays near the person center
 
-相机向一侧移动:
-mask 在图像中逐渐移出人体关键区域
+camera moves to one side:
+the mask gradually shifts out of the key human region in the image
 ```
 
-mask width：
+mask width:
 
 \[
 w_v
@@ -434,7 +431,7 @@ w_v
 w_{base}\cdot r_v
 \]
 
-mask height：
+mask height:
 
 \[
 h_v
@@ -443,21 +440,21 @@ h_{base}\cdot
 (0.6+0.4r_v)
 \]
 
-第一版不要求严格物理投影，但必须保证：
+The first version does not require strict physical projection, but it must ensure:
 
-> mask 的变化由统一 occluder bearing + camera bearing 决定，而不是每个 view 独立随机。
+> mask variation is determined by a single occluder bearing plus camera bearing, not independently random per view.
 
 ---
 
 # 11. Temporal Consistency
 
-同一个 view 的 13 个 frames：
+For the 13 frames of the same view:
 
 ```text
-不能每帧重新随机 mask
+the mask must not be re-randomized per frame
 ```
 
-occluder 参数在整个 episode 中固定：
+The occluder parameters are fixed for the whole episode:
 
 ```text
 theta_occ
@@ -466,17 +463,17 @@ height_base
 render_style
 ```
 
-person 在 13 帧中运动时，mask 可以根据 torso / interaction region 做平滑更新。
+As the person moves across the 13 frames, the mask may be updated smoothly based on the torso / interaction region.
 
-要求：
+Requirements:
 
 ```text
-mask center trajectory 连续
-mask size trajectory 连续
-不能 frame-to-frame 闪烁
+continuous mask center trajectory
+continuous mask size trajectory
+no frame-to-frame flickering
 ```
 
-建议加入 EMA：
+Add EMA:
 
 \[
 M_t =
@@ -485,7 +482,7 @@ M_t =
 (1-\beta)\hat M_t
 \]
 
-第一版：
+First version:
 
 ```text
 beta ≈ 0.7
@@ -495,11 +492,11 @@ beta ≈ 0.7
 
 # 12. Render Style
 
-不要只使用纯黑色矩形。
+Do not use plain black rectangles only.
 
-否则 VPOCLIP / policy 可能学到 synthetic artifact。
+Otherwise VPOCLIP / the policy may learn synthetic artifacts.
 
-至少随机化：
+Randomize at least:
 
 ```text
 neutral gray
@@ -508,63 +505,63 @@ background-color fill
 texture patch
 ```
 
-训练时随机 renderer。
+Randomize the renderer during training.
 
-测试时至少做：
+At test time, evaluate at least:
 
 ```text
 seen renderer
 held-out renderer
 ```
 
-检查策略是不是只记住 mask 外观。
+Check whether the policy merely memorizes the mask appearance.
 
 ---
 
-# 13. 不要让所有视角都被毁掉
+# 13. Do Not Destroy All Views
 
-生成一个 occlusion episode 后，必须检查：
+After generating an occlusion episode, verify:
 
 ```text
-至少一个有效 view 的关键人体区域仍然较清楚
+at least one valid view still has fairly clear key human regions
 ```
 
-否则这个 episode 是：
+Otherwise the episode is:
 
 ```text
 unrecoverable by construction
 ```
 
-不能为 active-view learning 提供有意义的 target。
+and provides no meaningful target for active-view learning.
 
-建议约束：
+Suggested constraint:
 
 \[
 \min_v r_v < r_{clear}
 \]
 
-例如：
+For example:
 
 ```text
-至少一个 view 的 task-relevant occlusion < 20%
+at least one view has task-relevant occlusion < 20%
 ```
 
 ---
 
-# 14. Phase 0 必须重新跑 VPOCLIP Cache
+# 14. Phase 0 Must Re-run the VPOCLIP Cache
 
-mask 必须真正作用到输入视频，再重新经过冻结的 VPOCLIP。
+The mask must actually be applied to the input video and re-encoded by the frozen VPOCLIP.
 
-不要：
+Do not:
 
 ```text
-只修改 policy feature
-但 HAR logits 仍用无遮挡视频
+only modify the policy feature
+while HAR logits still come from un-occluded videos
 ```
 
-否则 reward/utility 与 synthetic environment 不一致。
+Otherwise reward/utility is inconsistent with the synthetic environment.
 
-对每个：
+For every:
 
 ```text
 sample
@@ -572,7 +569,7 @@ view
 occlusion seed
 ```
 
-重新生成：
+regenerate:
 
 ```text
 masked video / frames
@@ -583,51 +580,51 @@ object tracks if possible
 
 ---
 
-# 15. Pose / Object 如何处理
+# 15. How to Handle Pose / Object
 
 ## Preferred
 
-如果计算资源允许：
+If compute allows:
 
 ```text
-对 masked frames 重新跑 pose / object detector
+re-run the pose / object detector on masked frames
 ```
 
-这样 observed state 会自然体现：
+The observed state then naturally reflects:
 
 ```text
-遮挡导致关键点缺失
-object confidence 下降
-trajectory 变差
+keypoint dropout caused by occlusion
+reduced object confidence
+degraded trajectory
 ```
 
-这是最真实的版本。
+This is the most realistic version.
 
 ---
 
 ## Minimum viable version
 
-如果重新跑 detector 成本太高：
+If re-running detectors is too expensive:
 
-继续使用原始 pose/object trajectory，但必须额外把：
+keep using the original pose/object trajectory, but additionally include:
 
 ```text
 synthetic mask descriptors
 ```
 
-显式加入 policy state。
+explicitly in the policy state.
 
-同时在报告中明确：
+State explicitly in the report:
 
 > pose/object trajectories are privileged clean sensor tracks in the first synthetic benchmark.
 
-之后再做 masked-detector 版本。
+Then build the masked-detector version later.
 
 ---
 
-# 16. 新增 Occlusion / Environment State
+# 16. New Occlusion / Environment State
 
-每个已经观察的 view、每个时间段保存：
+For each observed view and each time step, store:
 
 ```text
 mask_area_ratio
@@ -644,7 +641,7 @@ mask_width_relative_to_person
 mask_height_relative_to_person
 ```
 
-建议 shape：
+Suggested shape:
 
 ```text
 occlusion_trajectory: [13, 10~12]
@@ -652,33 +649,33 @@ occlusion_trajectory: [13, 10~12]
 
 ---
 
-# 17. 不允许输入 Future Candidate Occlusion
+# 17. Future Candidate Occlusion Must Not Be Input
 
-这是非常重要的因果约束。
+This is a crucial causal constraint.
 
-policy 在当前 state 中只能看到：
-
-```text
-已经访问 view 的 mask / occlusion descriptor
-```
-
-不能直接输入：
+The policy can only see in the current state:
 
 ```text
-candidate view 的真实 mask_area_ratio
-candidate view 的真实 visibility
-candidate view 的 future occlusion
+mask / occlusion descriptors of already visited views
 ```
 
-否则就等于把答案告诉 policy。
+It must not directly receive:
+
+```text
+true mask_area_ratio of candidate views
+true visibility of candidate views
+future occlusion of candidate views
+```
+
+Otherwise it amounts to giving the policy the answer.
 
 ---
 
-# 18. 可选的 Map-Aware Variant
+# 18. Optional Map-Aware Variant
 
-如果未来你希望模拟机器人已经有环境地图，可以单独做第二个版本。
+If you later want to simulate a robot that already has an environment map, build a separate second version.
 
-Map-aware state 可加入：
+The map-aware state may add:
 
 ```text
 estimated obstacle bearing
@@ -686,20 +683,20 @@ estimated obstacle distance
 obstacle width
 ```
 
-但必须单独报告：
+But report separately:
 
 ```text
 No-map policy
 Map-aware policy
 ```
 
-主结果优先使用 No-map，避免 privileged information 争议。
+Prioritize No-map for the main results to avoid privileged-information concerns.
 
 ---
 
 # 19. v2 Policy State
 
-建议：
+Proposed:
 
 \[
 s_t=
@@ -712,11 +709,11 @@ History_t
 ]
 \]
 
-其中：
+where:
 
 ### Human \(H_t\)
 
-继续使用：
+Keep using:
 
 ```text
 person_trajectory [13,4]
@@ -726,7 +723,7 @@ person_trajectory [13,4]
 
 ### Object \(O_t\)
 
-继续使用：
+Keep using:
 
 ```text
 object_trajectory [13,50,6]
@@ -736,7 +733,7 @@ object_trajectory [13,50,6]
 
 ### Environment / Occlusion \(E_t\)
 
-新增：
+New:
 
 ```text
 occlusion_trajectory [13,D_occ]
@@ -744,7 +741,7 @@ occlusion_trajectory [13,D_occ]
 
 ### Geometry \(G_t\)
 
-继续使用：
+Keep using:
 
 ```text
 candidate angle
@@ -755,7 +752,7 @@ second harmonic
 
 ### History
 
-继续限制：
+Keep limited to:
 
 ```text
 visited views
@@ -765,11 +762,11 @@ remaining valid candidates
 
 ---
 
-# 20. 网络改动：新增一个低容量 Occlusion Branch
+# 20. Network Change: Add a Low-Capacity Occlusion Branch
 
-不要直接换大 Transformer。
+Do not switch to a large Transformer directly.
 
-建议：
+Proposed:
 
 ```text
 Occlusion branch:
@@ -783,13 +780,13 @@ LayerNorm
 GELU
 ```
 
-得到：
+producing:
 
 ```text
 occlusion context = 32-D
 ```
 
-原 context：
+Original context:
 
 ```text
 person 32-D
@@ -797,7 +794,7 @@ object 64-D
 angle/current 16-D
 ```
 
-新 context：
+New context:
 
 ```text
 person 32
@@ -806,21 +803,21 @@ person 32
 + angle 16
 ```
 
-再投影到：
+then project to:
 
 ```text
 context 64-D
 ```
 
-candidate branch 继续保持当前 64-D。
+The candidate branch stays at the current 64-D.
 
-不要先增大主体容量。
+Do not increase the backbone capacity first.
 
 ---
 
-# 21. 必须做的 State Ablation
+# 21. State Ablation That Must Be Done
 
-至少比较：
+Compare at least:
 
 ```text
 A. Geometry only
@@ -836,15 +833,15 @@ E. Geometry + Person + Occlusion
 F. Geometry + Person + Object + Occlusion
 ```
 
-核心问题不是“大网络有没有提高”，而是：
+The core question is not whether a bigger network helps, but:
 
-> explicit environment/occlusion state 是否真正产生跨 unseen class 的 view-selection signal？
+> does explicit environment/occlusion state genuinely produce view-selection signal across unseen classes?
 
 ---
 
-# 22. Phase 0：先测 Active-Perception Pressure
+# 22. Phase 0: Measure Active-Perception Pressure First
 
-在训练 v2 policy 前，对：
+Before training the v2 policy, for:
 
 ```text
 Original
@@ -853,7 +850,7 @@ Medium
 Heavy
 ```
 
-分别计算固定 view0：
+compute with fixed view0:
 
 ```text
 Single
@@ -869,47 +866,47 @@ View-sensitive ratio
 
 ---
 
-# 23. Gate 0：Synthetic Benchmark 是否有效
+# 23. Gate 0: Is the Synthetic Benchmark Valid?
 
-只有满足下面大部分条件才继续训练 policy。
+Continue training the policy only if most of the following conditions are met.
 
 ## Condition A
 
-随着：
+As occlusion goes:
 
 ```text
 Original -> Mild -> Medium
 ```
 
-Single-view accuracy 应合理下降。
+single-view accuracy should degrade reasonably.
 
-不能出现：
+It must not happen that:
 
 ```text
-mask 越重 accuracy 反而整体提高
+heavier masks lead to overall higher accuracy
 ```
 
 ---
 
 ## Condition B
 
-Oracle-Random gap 应明显扩大。
+The Oracle-Random gap should widen markedly.
 
-当前原始数据约有明显 Oracle gap。
+The current original data already has a noticeable Oracle gap.
 
-希望 Medium occlusion 下：
+Under Medium occlusion, the:
 
 ```text
 Oracle-2 - Random-2
 ```
 
-至少比 Original 再扩大约：
+should widen over Original by at least roughly:
 
 ```text
 +3 percentage points
 ```
 
-或相对增长：
+or in relative terms:
 
 ```text
 >= 30%
@@ -919,17 +916,17 @@ Oracle-2 - Random-2
 
 ## Condition C
 
-Recoverable ratio 应明显上升。
+The recoverable ratio should increase markedly.
 
-当前原始实验大约只有少数样本真正 recoverable。
+In the current original experiments, only a small fraction of samples are truly recoverable.
 
-建议目标：
+Suggested target:
 
 ```text
 Medium occlusion recoverable >= 25%
 ```
 
-更理想：
+More ideally:
 
 ```text
 30%+
@@ -939,27 +936,27 @@ Medium occlusion recoverable >= 25%
 
 ## Condition D
 
-不能所有视角一起崩。
+All views must not collapse together.
 
-如果：
+If:
 
 ```text
-Oracle 也接近 Random / Single
+Oracle is also close to Random / Single
 ```
 
-说明 mask 太重，active movement 也救不了。
+the mask is too heavy and active movement cannot help.
 
-这种 benchmark 无效。
+Such a benchmark is invalid.
 
 ---
 
 # 24. Occlusion Seed / Layout Split
 
-不能在训练和测试重复同一个 mask pattern。
+The same mask pattern must not repeat across train and test.
 
-每个 episode 的 occluder 参数随机采样。
+Occluder parameters are randomly sampled per episode.
 
-建议：
+Suggested:
 
 ```text
 Train occlusion seeds:
@@ -972,7 +969,7 @@ Test:
 3000-3299
 ```
 
-并确保：
+And ensure:
 
 ```text
 theta_occ
@@ -981,24 +978,24 @@ strength
 renderer
 ```
 
-都有随机变化。
+all vary randomly.
 
-进一步做：
+Additionally perform:
 
 ```text
 held-out renderer
 held-out occlusion strength range
 ```
 
-检验 spatial strategy 泛化。
+to test generalization of the spatial strategy.
 
 ---
 
-# 25. Policy 训练集
+# 25. Policy Training Set
 
-仍然只用 seen classes。
+Still use seen classes only.
 
-推荐训练 mixture：
+Recommended training mixture:
 
 ```text
 25% original
@@ -1007,49 +1004,49 @@ held-out occlusion strength range
 15% heavy
 ```
 
-不要全部训练成 Heavy。
+Do not train everything as Heavy.
 
-目的：
+Goal:
 
-> policy 学到“什么时候 geometry/environment matter”，而不是只适应一个固定遮挡强度。
+> the policy learns when geometry/environment matter, rather than adapting only to a single fixed occlusion strength.
 
 ---
 
-# 26. VPOCLIP 先冻结
+# 26. Keep VPOCLIP Frozen First
 
-第一阶段：
+First phase:
 
 ```text
 VPOCLIP frozen
 ```
 
-这是必要的。
+This is necessary
 
-因为我们要先隔离：
+because we first need to isolate:
 
-> active view policy 是否能因为 environment state 而选择更好的视角？
+> whether the active view policy can select better viewpoints thanks to environment state.
 
-如果同时 fine-tune VPOCLIP：
+If VPOCLIP is fine-tuned at the same time:
 
 ```text
-recognizer 可能学会直接适应 mask
+the recognizer may learn to adapt to the masks directly
 ```
 
-反而把 active-view pressure 消掉。
+which would instead remove the active-view pressure.
 
-只有 policy 已经成功后，再单独做：
+Only after the policy succeeds, run separately:
 
 ```text
 masked-VPOCLIP robustness fine-tuning
 ```
 
-作为附加实验。
+as an additional experiment.
 
 ---
 
-# 27. Utility 必须基于 Masked HAR Logits 重新计算
+# 27. Utility Must Be Recomputed from Masked HAR Logits
 
-继续沿用当前 delta-margin utility：
+Keep the current delta-margin utility:
 
 \[
 m(s)
@@ -1059,7 +1056,7 @@ L_{GT}(s)
 \max_{c\neq GT}L_c(s)
 \]
 
-candidate utility：
+candidate utility:
 
 \[
 u(s,a)
@@ -1067,34 +1064,34 @@ u(s,a)
 m(s\cup a)-m(s)
 \]
 
-但所有 \(L\) 必须来自：
+But all \(L\) must come from:
 
 ```text
 masked / synthetic-occlusion VPOCLIP cache
 ```
 
-不能继续用 original clean logits。
+Do not keep using the original clean logits.
 
 ---
 
-# 28. 训练 Target 与 State 的边界
+# 28. Boundary Between Training Target and State
 
-允许：
+Allowed:
 
 ```text
 future candidate masked logits
 GT label
 ```
 
-用于离线生成 training target：
+for offline generation of the training target:
 
 \[
 u(s,a)
 \]
 
-但禁止进入 policy state。
+but forbidden from entering the policy state.
 
-推理时只允许：
+At inference, allow only:
 
 ```text
 observed person trajectory
@@ -1106,11 +1103,11 @@ candidate geometry
 
 ---
 
-# 29. Loss 先保持 v1
+# 29. Keep the v1 Loss for Now
 
-第一版不要同时修改太多变量。
+Do not change too many variables at once in the first version.
 
-继续：
+Keep:
 
 \[
 \mathcal L
@@ -1120,7 +1117,7 @@ candidate geometry
 0.5\mathcal L_{pairwise}
 \]
 
-soft target：
+soft target:
 
 \[
 p_a
@@ -1128,25 +1125,25 @@ p_a
 softmax(u_a/T_u)
 \]
 
-初始：
+Initial:
 
 ```text
 T_u = 0.20
 ```
 
-pairwise：
+pairwise:
 
 ```text
-只比较 |u_i-u_j| > 0.02
+compare only pairs with |u_i-u_j| > 0.02
 ```
 
-保持与 v1 尽量一致。
+Stay as consistent with v1 as possible.
 
 ---
 
-# 30. 增加 View-Sensitivity Weight（建议做 ablation）
+# 30. Add View-Sensitivity Weight (Ablation Recommended)
 
-可以额外测试：
+Optionally test:
 
 \[
 VS(s)
@@ -1154,7 +1151,7 @@ VS(s)
 \max_a u(s,a)-\min_a u(s,a)
 \]
 
-sample weight：
+sample weight:
 
 \[
 w_s
@@ -1162,7 +1159,7 @@ w_s
 clip(VS(s),w_{min},w_{max})
 \]
 
-比较：
+Compare:
 
 ```text
 unweighted
@@ -1170,43 +1167,43 @@ vs
 view-sensitivity weighted
 ```
 
-如果 synthetic occlusion 真正产生 action difference，VS weighting 应该比原始 ETRI 更有意义。
+If synthetic occlusion genuinely creates action differences, VS weighting should be more meaningful than on the original ETRI.
 
 ---
 
-# 31. 第一阶段仍然不要 PPO
+# 31. Still No PPO in the First Phase
 
-先训练当前这种 supervised/offline ranking policy。
+First train the current supervised/offline ranking policy.
 
-理由：
+Rationale:
 
-> 本轮首先验证“environment state 是否能够预测 useful movement”。
+> This round first verifies whether environment state can predict useful movement.
 
-如果连监督 candidate utility 都不能学到，就没有理由直接上 PPO。
+If supervised candidate utility cannot even be learned, there is no reason to go straight to PPO.
 
-只有 supervised policy 在固定 view0 / unseen 下稳定超过 Random 后，再做真正 RL。
+Only after the supervised policy stably beats Random under fixed view0 / unseen settings, move on to real RL.
 
 ---
 
-# 32. 主要评测协议：固定 View0
+# 32. Main Evaluation Protocol: Fixed View0
 
-必须把：
+Make:
 
 ```text
 fixed view0
 ```
 
-作为主协议。
+the main protocol.
 
-原因：
+Reason:
 
-此前 policy 在其他起点有小幅正提升，但 fixed view0 没有稳定超过 random。
+Previously the policy showed small positive gains from other starting views, but did not stably beat random from fixed view0.
 
-本轮最重要的问题就是：
+The most important question this round is:
 
-> synthetic occlusion + environment-conditioned state 能不能让 fixed view0 也产生稳定正收益？
+> can synthetic occlusion + environment-conditioned state produce stable positive gains from fixed view0 as well?
 
-其他：
+Treat:
 
 ```text
 view1
@@ -1214,13 +1211,13 @@ view2
 view3
 ```
 
-作为补充。
+as supplementary.
 
 ---
 
-# 33. 必须比较的 Baselines
+# 33. Baselines That Must Be Compared
 
-每个 occlusion level 比较：
+Compare at each occlusion level:
 
 ```text
 Single
@@ -1240,17 +1237,17 @@ All valid
 
 ---
 
-# 34. Random 必须多 Seed
+# 34. Random Must Use Multiple Seeds
 
-继续沿用当前严格做法：
+Keep the current strict practice:
 
 ```text
 >= 10 random evaluation seeds
 ```
 
-不要用一次随机路径和 policy 比。
+Do not compare the policy against a single random trajectory.
 
-报告：
+Report:
 
 ```text
 mean
@@ -1261,25 +1258,25 @@ bootstrap CI
 
 ---
 
-# 35. 主要成功指标
+# 35. Primary Success Metric
 
 ## Primary
 
-fixed view0、true unseen、Medium occlusion：
+fixed view0, true unseen, Medium occlusion:
 
 \[
 Policy - Random
 \]
 
-建议只有达到：
+Consider progress meaningful only when it reaches:
 
 ```text
 >= +1.0 pp
 ```
 
-且 3 个 training seeds 都方向一致，才认为出现有意义进展。
+and all 3 training seeds agree in direction.
 
-更理想：
+More ideally:
 
 ```text
 >= +2.0 pp
@@ -1289,33 +1286,33 @@ Policy - Random
 
 ## Statistical
 
-paired bootstrap：
+paired bootstrap:
 
 ```text
 95% CI
 ```
 
-最好：
+Ideally:
 
 ```text
 lower bound > 0
 ```
 
-如果 CI 仍跨 0，但 3 seeds 全为正，可记为 promising，不算最终成功。
+If the CI still crosses 0 but all 3 seeds are positive, record it as promising, not as final success.
 
 ---
 
-# 36. 更重要的诊断：Action Agreement 不是主指标
+# 36. A More Important Diagnostic: Action Agreement Is Not the Main Metric
 
-不要主要优化：
+Do not primarily optimize:
 
 ```text
-是否命中唯一 oracle candidate
+whether the unique oracle candidate is hit
 ```
 
-因为多个 candidate 可能得到相近 HAR 效果。
+because multiple candidates may yield similar HAR results.
 
-主要报告：
+Report mainly:
 
 ```text
 final Top-1
@@ -1324,7 +1321,7 @@ utility regret
 Policy - Random
 ```
 
-其中：
+where:
 
 \[
 Regret
@@ -1334,18 +1331,18 @@ u_{oracle}-u_{selected}
 
 ---
 
-# 37. 检查 Policy 是否真的“绕开遮挡”
+# 37. Check Whether the Policy Really Avoids Occlusion
 
-新增以下分析。
+Add the following analysis.
 
-对每次 policy movement 计算：
+For each policy movement, compute:
 
 ```text
 observed occlusion before move
 observed occlusion after move
 ```
 
-统计：
+Compute:
 
 \[
 \Delta Occ
@@ -1353,7 +1350,7 @@ observed occlusion after move
 Occ_{before}-Occ_{after}
 \]
 
-比较：
+Compare:
 
 ```text
 Policy
@@ -1361,17 +1358,17 @@ Random
 Preferred Orthogonal
 ```
 
-如果 policy 真学到了 spatial avoidance，应看到：
+If the policy truly learned spatial avoidance, one should see:
 
 ```text
-Policy 的平均 occlusion reduction > Random
+the policy's average occlusion reduction > Random
 ```
 
 ---
 
 # 38. Side-Step Behavior Analysis
 
-按照 current mask 在人体左/右的位置分组：
+Group by the position of the current mask relative to the person's left/right:
 
 ```text
 mask predominantly left of person
@@ -1379,26 +1376,26 @@ mask predominantly right of person
 mask centered
 ```
 
-检查 policy 选择的 relative candidate angle。
+Examine the relative candidate angle chosen by the policy.
 
-希望看到：
+Ideally:
 
 ```text
-左侧遮挡 -> policy 更倾向移动到能解遮挡的一侧
-右侧遮挡 -> 方向相反
+occlusion on the left -> the policy prefers moving to the side that resolves the occlusion
+occlusion on the right -> the opposite direction
 ```
 
-这比单纯 Top-1 更能证明：
+This demonstrates more than Top-1 alone:
 
-> policy 学到了 environment-conditioned movement strategy。
+> the policy learned an environment-conditioned movement strategy.
 
 ---
 
 # 39. Counterfactual Test
 
-这是本轮非常重要的实验。
+This is a very important experiment for this round.
 
-同一个：
+Keep the same:
 
 ```text
 human trajectory
@@ -1406,95 +1403,95 @@ object trajectory
 camera geometry
 ```
 
-保持不变，只改变：
+unchanged; change only:
 
 ```text
 occluder bearing
 ```
 
-例如：
+For example:
 
 ```text
 theta_occ = -45°
 theta_occ = +45°
 ```
 
-检查 policy action 是否跟着系统性改变。
+Check whether the policy action changes systematically.
 
-如果 action 基本不变：
+If the action barely changes:
 
-> policy 仍主要依赖 camera prior / trajectory shortcut。
+> the policy still relies mainly on camera prior / trajectory shortcut.
 
-如果 action 随 obstacle side 改变：
+If the action changes with the obstacle side:
 
-> environment branch 真正在控制决策。
+> the environment branch is truly controlling the decision.
 
 ---
 
 # 40. Occlusion-Feature Shuffle Test
 
-测试时随机打乱不同 sample 之间的：
+At test time, randomly shuffle across samples:
 
 ```text
 occlusion descriptors
 ```
 
-保持其他 state 不变。
+Keep all other state unchanged.
 
-如果 policy performance 明显下降，说明它确实使用 environment state。
+If policy performance drops markedly, it does use environment state.
 
-如果几乎不变：
+If it barely changes:
 
-> occlusion branch 被忽略。
+> the occlusion branch is ignored.
 
 ---
 
 # 41. Geometry Shuffle Test
 
-同理打乱 candidate geometry。
+Likewise, shuffle candidate geometry.
 
-如果 performance 不降：
+If performance does not drop:
 
-> 网络可能在记 camera slot。
+> the network may be memorizing camera slots.
 
-必须检查并阻止 camera-ID shortcut。
+Check for and block the camera-ID shortcut.
 
 ---
 
 # 42. Camera Slot Invariance
 
-因为当前每个 recording 的 view0/1/2/3 没有固定左前右后语义，本轮继续确保：
+Because view0/1/2/3 currently have no fixed left/front/right/back semantics per recording, keep ensuring this round:
 
 ```text
-不把 slot ID 当方位输入
+do not feed slot ID as bearing input
 ```
 
-可额外随机 permutation view slots 后评测。
+Optionally evaluate with randomly permuted view slots.
 
-只要 geometry 和数据一起正确 permutation，policy 输出应该保持几何等价。
+As long as geometry and data are permuted together correctly, policy outputs should remain geometrically equivalent.
 
 ---
 
 # 43. Seen-to-Unseen Generalization
 
-训练只使用 seen action classes。
+Train only on seen action classes.
 
-true unseen：
+true unseen:
 
 ```text
 [A001, A003, A027, A035, A051]
 class id [0,2,26,34,50]
 ```
 
-继续保持最终 5-way protocol。
+Keep the final 5-way protocol.
 
-但 mask 参数也必须 unseen：
+But mask parameters must also be unseen:
 
 ```text
-test occlusion seeds 未在 train 出现
+test occlusion seeds must not appear in training
 ```
 
-所以最终是双重泛化：
+The final evaluation is therefore a double generalization:
 
 \[
 \boxed{
@@ -1506,9 +1503,9 @@ test occlusion seeds 未在 train 出现
 
 ---
 
-# 44. 如果 v2 成功，再做真正 RL
+# 44. If v2 Succeeds, Then Move to Real RL
 
-只有满足：
+Only after:
 
 ```text
 fixed view0
@@ -1517,13 +1514,13 @@ Medium occlusion
 Policy > Random by meaningful margin
 ```
 
-后，才进入 PPO / sequential RL。
+enter PPO / sequential RL.
 
 ---
 
-# 45. RL Stage 的 State
+# 45. State for the RL Stage
 
-继续使用：
+Keep using:
 
 ```text
 person trajectory
@@ -1533,19 +1530,19 @@ current/history geometry
 visited views
 ```
 
-可以增加：
+May add:
 
 ```text
 current VPOCLIP uncertainty
 ```
 
-但不要输入 action class。
+But do not input the action class.
 
 ---
 
 # 46. RL Actions
 
-4-view dataset 中：
+In the 4-view dataset:
 
 ```text
 STOP
@@ -1554,15 +1551,15 @@ move to unvisited view2
 move to unvisited view3
 ```
 
-非法 / 已访问动作 mask 掉。
+Illegal / already-visited actions are masked out.
 
 ---
 
 # 47. RL Reward
 
-在 synthetic occlusion 环境下，visibility finally has causal meaning。
+In the synthetic occlusion environment, visibility finally has causal meaning.
 
-建议：
+Proposed:
 
 \[
 r_t
@@ -1578,111 +1575,111 @@ r_t
 \mu C_{view}
 \]
 
-其中：
+where:
 
 ```text
 Delta HAR:
-识别 evidence improvement
+recognition evidence improvement
 
 Delta Occ:
-真实 observed occlusion reduction
+true observed occlusion reduction
 
 Delta InteractionVisibility:
-hand/object/upper-body 关键区域恢复
+recovery of hand/object/upper-body key regions
 
 C_move:
-移动角度 / 距离代价
+movement angle / distance cost
 
 C_view:
-每多观察一个 view 的固定成本
+fixed cost per additional observed view
 ```
 
 ---
 
-# 48. RL 不要让 Visibility 主导
+# 48. RL: Do Not Let Visibility Dominate
 
-虽然 synthetic occlusion 让 visibility 变得有意义，但最终任务仍然是 HAR。
+Although synthetic occlusion makes visibility meaningful, the final task is still HAR.
 
-所以：
+Therefore:
 
 ```text
 Delta HAR / final HAR reward
 ```
 
-必须是主任务。
+must be the main task.
 
-visibility 只是 shaped reward。
+Visibility is only a shaped reward.
 
-避免 policy 只追求：
+Avoid a policy that only pursues:
 
 ```text
-“看见最多人体”
+"seeing the most body"
 ```
 
-却不提高识别。
+without improving recognition.
 
 ---
 
-# 49. 如果 Supervised v2 仍失败
+# 49. If Supervised v2 Still Fails
 
-如果 benchmark 已经满足 Gate 0：
+If the benchmark already passes Gate 0:
 
 ```text
-Oracle-Random gap 明显扩大
-recoverable ratio 明显增加
+Oracle-Random gap widens markedly
+recoverable ratio increases markedly
 ```
 
-但 v2 仍然：
+but v2 still has:
 
 ```text
 Policy ~= Random
 ```
 
-则进一步判断：
+then diagnose further:
 
 ### Case A
 
-occlusion state shuffle 不影响 policy：
+occlusion state shuffle does not affect the policy:
 
 ```text
-环境分支没有学到
+the environment branch learned nothing
 ```
 
-需要改 representation / optimization。
+Change the representation / optimization.
 
 ### Case B
 
-occlusion state 能预测 oracle utility，但 network 学不好：
+occlusion state predicts oracle utility, but the network fails to learn:
 
 ```text
-capacity / training issue
+a capacity / training issue
 ```
 
-这时才考虑更大网络。
+Only then consider a larger network.
 
 ### Case C
 
-即使 oracle utility 与 observed environment state 相关性仍接近 0：
+oracle utility still correlates nearly 0 with observed environment state:
 
 ```text
-当前 state 仍不足
+the current state is still insufficient
 ```
 
-此时不要继续堆网络。
+Do not keep stacking networks at this point.
 
 ---
 
-# 50. 更大网络什么时候允许
+# 50. When a Larger Network Is Allowed
 
-只有当至少满足：
+Only when at least:
 
 ```text
-environment features 与 utility 有明显相关性
-v2 small model 在 seen/validation 明显优于 geometry baseline
-true unseen 已出现稳定正 gap
+environment features correlate noticeably with utility
+the small v2 model clearly beats the geometry baseline on seen/validation
+a stable positive gap already appears on true unseen
 ```
 
-才允许测试：
+may you test:
 
 ```text
 context 128-D
@@ -1692,124 +1689,124 @@ occlusion 64-D
 candidate 128-D
 ```
 
-之后再考虑：
+Then consider:
 
 ```text
 GRU / TCN
 small Transformer
 ```
 
-不是现在第一步。
+Not as the first step now.
 
 ---
 
-# 51. Optional Phase：Calibration-Based 3D Occluder
+# 51. Optional Phase: Calibration-Based 3D Occluder
 
-如果后续可以取得 camera calibration：
+If camera calibration becomes available later:
 
 ```text
 intrinsics
 extrinsics
 ```
 
-再升级为真正 3D virtual cuboid。
+upgrade to a true 3D virtual cuboid.
 
-在 human/world coordinate 中放：
+Place in human/world coordinates:
 
 ```text
 3D cuboid / vertical plane
 ```
 
-分别投影到每个 camera：
+Project into each camera respectively:
 
 \[
 M_v=\Pi(P_v,O)
 \]
 
-这样 synthetic occlusion 会更接近真实机器人绕遮挡物观察。
+This makes synthetic occlusion closer to a real robot observing around occluders.
 
-但这不是本轮 MVP 的前置条件。
+But this is not a prerequisite for this round's MVP.
 
 ---
 
-# 52. 最终推荐执行顺序
+# 52. Final Recommended Execution Order
 
 ```text
 STEP 0
-复现当前 v1 baseline
+Reproduce the current v1 baseline
 
 STEP 1
-实现 view-consistent synthetic occlusion generator
+Implement the view-consistent synthetic occlusion generator
 
 STEP 2
-生成 Original / Mild / Medium / Heavy masked cache
+Generate Original / Mild / Medium / Heavy masked caches
 
 STEP 3
-重新跑 frozen VPOCLIP logits
+Re-run frozen VPOCLIP logits
 
 STEP 4
-评估 Oracle-Random gap / recoverable ratio
+Evaluate Oracle-Random gap / recoverable ratio
 -> Gate 0
 
 STEP 5
-增加 observed occlusion/environment branch
+Add the observed occlusion/environment branch
 
 STEP 6
-训练 supervised v2 ranker
+Train the supervised v2 ranker
 
 STEP 7
-做 state ablation
+Run the state ablation
 
 STEP 8
 fixed view0 true-unseen evaluation
 
 STEP 9
-做 occlusion shuffle / counterfactual / geometry shuffle
+Run occlusion shuffle / counterfactual / geometry shuffle
 
 STEP 10
-如果 v2 确实稳定超过 Random
-再进入 sequential PPO
+Only if v2 stably beats Random
+move on to sequential PPO
 ```
 
 ---
 
-# 53. Codex 直接执行任务
+# 53. Direct Execution Task for Codex
 
 ```text
-请基于：
+Based on:
 
 rl/multistep_angle_object_trajectory_policy_v1.py
 
-建立新版本：
+create a new version:
 
 rl/multistep_environment_occlusion_policy_v2.py
 
-并建立 synthetic occlusion 数据生成与评测脚本。
+and build the synthetic occlusion data generation and evaluation scripts.
 
-不要直接训练 PPO。
+Do not train PPO directly.
 
 ==================================================
 A. SYNTHETIC OCCLUSION GENERATOR
 ==================================================
 
-新增：
+Add:
 
 rl/build_view_consistent_occlusion_cache.py
 
-要求：
+Requirements:
 
-1. 使用每个 sample 的真实 view_geometry sin/cos；
-2. 每个 episode 采样一个 human-relative occluder bearing；
-3. 同一 episode 的 4 个 views 共用同一 occluder；
-4. mask strength 根据 camera-occluder angular difference 变化；
-5. 13 个 frames temporal consistent；
-6. mask 优先覆盖 person / upper-body / hand-object region；
-7. 不能根据 GT action class 决定 mask；
-8. 至少一个 view 保持相对 clear；
-9. 保存 occlusion metadata；
-10. train/val/test 使用不同 occlusion seeds。
+1. Use the real view_geometry sin/cos of each sample;
+2. Sample one human-relative occluder bearing per episode;
+3. The 4 views of the same episode share the same occluder;
+4. Mask strength varies with the camera-occluder angular difference;
+5. Temporally consistent across the 13 frames;
+6. The mask prioritizes covering the person / upper-body / hand-object region;
+7. The mask must not be decided by the GT action class;
+8. At least one view stays relatively clear;
+9. Save occlusion metadata;
+10. Use different occlusion seeds for train/val/test.
 
-实现：
+Implement:
 - Mild
 - Medium
 - Heavy
@@ -1818,32 +1815,32 @@ rl/build_view_consistent_occlusion_cache.py
 B. MASKED VPOCLIP CACHE
 ==================================================
 
-使用冻结的当前 VPOCLIP。
+Use the current frozen VPOCLIP.
 
-对 masked clips 重新计算：
+Recompute for masked clips:
 
 - per-view logits
 - fused evaluation cache
 
-如果算力允许：
-重新跑 pose/object detector。
+If compute allows:
+re-run the pose/object detector.
 
-如果暂时不允许：
-保留 clean pose/object，
-但必须显式记录这是 clean-track synthetic setting。
+If not for now:
+keep clean pose/object,
+but explicitly record that this is the clean-track synthetic setting.
 
 ==================================================
 C. PHASE-0 DIAGNOSTIC
 ==================================================
 
-在训练新 policy 前，对：
+Before training the new policy, for:
 
 Original
 Mild
 Medium
 Heavy
 
-计算 fixed view0：
+compute with fixed view0:
 
 - Single
 - Random-2
@@ -1857,22 +1854,21 @@ Heavy
 - view-sensitive ratio
 - Oracle-Random gap
 
-如果 Medium 没有明显增加：
-Oracle-Random gap
-以及 recoverable ratio，
+If Medium does not markedly increase the
+Oracle-Random gap and the recoverable ratio,
 
-停止，不训练新 policy。
-先修 synthetic occlusion。
+stop; do not train a new policy.
+Fix the synthetic occlusion first.
 
 ==================================================
 D. OCCLUSION STATE
 ==================================================
 
-对 observed view 构造：
+For observed views, construct:
 
 occlusion_trajectory [13,D]
 
-至少包括：
+Include at least:
 
 - mask area ratio
 - person overlap
@@ -1884,13 +1880,13 @@ occlusion_trajectory [13,D]
 - mask center relative x/y
 - relative width/height
 
-严禁输入 future candidate 的真实 occlusion。
+Strictly forbid inputting the true occlusion of future candidates.
 
 ==================================================
 E. POLICY V2
 ==================================================
 
-保留 v1：
+Keep from v1:
 
 - person branch
 - object branch
@@ -1898,7 +1894,7 @@ E. POLICY V2
 - history
 - action mask
 
-新增低容量 occlusion branch：
+Add a low-capacity occlusion branch:
 
 Conv1d(D_occ -> 16)
 GroupNorm
@@ -1915,18 +1911,18 @@ occlusion 32
 angle 16
 -> context 64
 
-candidate branch 暂时不扩大。
+Do not enlarge the candidate branch for now.
 
 ==================================================
 F. TRAINING TARGET
 ==================================================
 
-使用 masked VPOCLIP logits 重新计算：
+Recompute using masked VPOCLIP logits:
 
 m(s)
 u(s,a) = m(s+a) - m(s)
 
-继续：
+Keep:
 
 listwise
 +
@@ -1935,29 +1931,29 @@ listwise
 pair:
 |u_i-u_j| > 0.02
 
-第一版保持 v1 主要超参数，
-不要同时改变太多变量。
+Keep the main v1 hyperparameters in the first version;
+do not change too many variables at once.
 
 ==================================================
 G. TRAIN MIX
 ==================================================
 
-建议：
+Suggested:
 
 25% original
 25% mild
 35% medium
 15% heavy
 
-只在 seen action classes 训练。
+Train only on seen action classes.
 
-true unseen 禁止调参。
+No hyperparameter tuning on true unseen.
 
 ==================================================
 H. STATE ABLATION
 ==================================================
 
-必须比较：
+Must compare:
 
 A Geometry
 B Geometry + Person
@@ -1970,18 +1966,18 @@ F Geometry + Person + Object + Occlusion
 I. MAIN EVALUATION
 ==================================================
 
-主协议：
+Main protocol:
 
 fixed view0
 true unseen 5-way
 
-同时补充 fixed1/2/3。
+Additionally evaluate fixed1/2/3.
 
-Random 使用 >=10 evaluation seeds。
+Use >=10 evaluation seeds for Random.
 
-Policy 使用 >=3 training seeds。
+Use >=3 training seeds for the policy.
 
-比较：
+Compare:
 
 Single
 Random
@@ -1991,7 +1987,7 @@ v2 environment-conditioned policy
 Oracle
 All valid
 
-输出：
+Report:
 
 Top-1
 Policy-Random
@@ -2003,86 +1999,87 @@ movement cost
 J. BEHAVIOR DIAGNOSTICS
 ==================================================
 
-必须增加：
+Must add:
 
 1. occlusion reduction after move
-2. mask-left / mask-right 分组 action histogram
+2. action histogram grouped by mask-left / mask-right
 3. counterfactual occluder-bearing flip
 4. occlusion-feature shuffle
 5. geometry shuffle
 6. camera-slot permutation test
 
-目标不是只看 accuracy，
-而是证明 policy 真正在使用 environment state。
+The goal is not just accuracy,
+but to prove the policy truly uses environment state.
 
 ==================================================
 K. SUCCESS CONDITION
 ==================================================
 
-主目标：
+Main goal:
 
 fixed view0
 true unseen
 Medium occlusion
 
-希望：
+Hope to achieve:
 
 Policy - Random >= +1.0 pp
 
-更理想：
+More ideally:
 >= +2.0 pp
 
-并且：
-3 个 training seeds 方向一致。
+And:
 
-如果 paired bootstrap 95% CI lower bound > 0，
-可认为结果稳定。
+all 3 training seeds agree in direction.
+
+If the paired bootstrap 95% CI lower bound > 0,
+the result can be considered stable.
 
 ==================================================
 L. DO NOT TRAIN PPO YET
 ==================================================
 
-只有 supervised v2 在上述主协议下稳定超过 Random，
-才开始 sequential PPO。
+Start sequential PPO only after supervised v2
+stably beats Random under the main protocol above.
 
-如果 v2 仍约等于 Random，
-先分析：
+If v2 is still roughly equal to Random,
+first analyze:
 - environment utility correlation
 - occlusion shuffle
 - counterfactual behavior
 
-不要自动扩大网络。
+Do not automatically enlarge the network.
 
 ==================================================
 FINAL REPORT
 ==================================================
 
-最终必须回答：
+The final report must answer:
 
-1. synthetic occlusion 是否扩大 Oracle-Random gap？
-2. recoverable ratio 是否明显增加？
-3. explicit occlusion state 是否提升 unseen view selection？
-4. policy 是否真的学会绕开遮挡，而不是记 camera prior？
-5. fixed view0 是否终于稳定超过 Random？
-6. 改进来自 environment conditioning，还是单纯 geometry？
-7. 是否已经有足够证据进入 PPO？
+1. Does synthetic occlusion enlarge the Oracle-Random gap?
+2. Does the recoverable ratio increase markedly?
+3. Does explicit occlusion state improve unseen view selection?
+4. Does the policy truly learn to avoid occlusion, rather than memorizing camera priors?
+5. Does fixed view0 finally beat Random stably?
+6. Do the gains come from environment conditioning, or from geometry alone?
+7. Is there enough evidence to proceed to PPO?
 ```
 
 ---
 
-# 54. 本轮最重要的论文假设
+# 54. Most Important Paper Hypothesis for This Round
 
-建议明确写成：
+Suggested formulation:
 
 > **The failure of learned active-view policies on the original ETRI setting may be caused not only by weak policy models, but by insufficient active-perception pressure: most actions are already well observed from multiple cameras.**
 
-然后验证：
+Then verify:
 
 > **When viewpoint-dependent occlusion makes observability depend on camera motion, a class-agnostic policy conditioned on human–environment spatial dynamics should learn transferable viewpoint behavior without using action semantics.**
 
 ---
 
-# 55. 如果本轮成功，方法最终可描述为
+# 55. If This Round Succeeds, the Method Can Ultimately Be Described As
 
 \[
 \boxed{
@@ -2090,7 +2087,7 @@ FINAL REPORT
 }
 \]
 
-策略学习：
+The policy learns:
 
 \[
 Q_\theta(
@@ -2102,7 +2099,7 @@ a
 )
 \]
 
-而不是：
+rather than:
 
 \[
 Q_\theta(
@@ -2111,7 +2108,7 @@ a
 )
 \]
 
-这才是本项目希望得到的核心迁移机制：
+This is the core transfer mechanism this project hopes for:
 
 \[
 \boxed{

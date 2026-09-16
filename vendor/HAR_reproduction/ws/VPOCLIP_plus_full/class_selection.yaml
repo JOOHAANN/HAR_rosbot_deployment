@@ -1,16 +1,16 @@
-# CLIPGCN 55类动作 角色选择表
-# 每类三种状态:
-#   seen   - 已见类 (参与 seen 侧的样本与候选)
-#   unseen - 未见类 (参与 unseen 侧的样本与候选, 用于ZSL/GZSL评测)
-#   off    - 完全排除 (样本和候选都不出现)
-# 改完运行: /root/miniconda3/envs/clipgcn/bin/python tools/build_class_selection.py
-# 生成 data/class_selection/metadata.json 供 test.py --class-split-dir 使用
-# 注: label id = ID - 1 (数据集标签0-54)
+# CLIPGCN 55-action class selection table
+# Each class has one of three states:
+#   seen   - seen class (contributes samples and candidates on the seen side)
+#   unseen - unseen class (contributes samples and candidates on the unseen side, for ZSL/GZSL eval)
+#   off    - fully excluded (appears in neither samples nor candidates)
+# After editing, run: /root/miniconda3/envs/clipgcn/bin/python tools/build_class_selection.py
+# to generate data/class_selection/metadata.json for test.py --class-split-dir
+# Note: label id = ID - 1 (dataset labels 0-54)
 #
-# !!! 重要: unseen 标记只改变评测协议, 不改变模型训练时见过什么 !!!
-# 真ZSL要求: 这里标 unseen 的类集合 == checkpoint 训练时排除的类集合
-#   参考: 50_5 checkpoint 的排除集是 A010 A011 A012 A018 A050 (label 9,10,11,17,49)
-# 当前搭配的checkpoint: (自己填, 换表时记得更新)
+# !!! IMPORTANT: the unseen marker only changes the evaluation protocol, not what the model saw in training !!!
+# True ZSL requires: the classes marked unseen here == the classes excluded during checkpoint training
+#   Reference: the 50_5 checkpoint excludes A010 A011 A012 A018 A050 (labels 9,10,11,17,49)
+# Checkpoint paired with this table: (fill in yourself; update when the table changes)
 classes:
   A001: seen   # label= 0 | eating food with a fork
   A002: seen   # label= 1 | pouring water into a cup

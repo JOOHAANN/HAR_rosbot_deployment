@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/9/29 下午3:31
+@date: 2020/9/29 3:31 PM
 @file: i3d_head.py
 @author: zj
 @description: 

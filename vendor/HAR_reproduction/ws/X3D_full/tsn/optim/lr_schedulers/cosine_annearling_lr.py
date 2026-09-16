@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/9/9 下午9:49
+@date: 2020/9/9 9:49 PM
 @file: cosine_annearling_lr.py
 @author: zj
 @description: 

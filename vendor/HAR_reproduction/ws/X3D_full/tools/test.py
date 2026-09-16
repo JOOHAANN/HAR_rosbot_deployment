@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/9/18 上午9:15
+@date: 2020/9/18 9:15 AM
 @file: test.py
 @author: zj
 @description: 

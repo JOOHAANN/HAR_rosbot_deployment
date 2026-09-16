@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/10/4 下午3:09
+@date: 2020/10/4 3:09 PM
 @file: parser.py
 @author: zj
 @description: 
@@ -150,13 +150,13 @@ def load_train_config(args):
 
 def load_test_config(args):
     if not os.path.isfile(args.config_file):
-        raise ValueError('需要输入配置文件路径')
+        raise ValueError('a config file path is required')
     cfg.merge_from_file(args.config_file)
     checkpoint = args.pretrained or cfg.TEST.CHECKPOINT
     output_dir = args.output or cfg.TEST.OUTPUT_DIR
     split = args.split or cfg.TEST.SPLIT
     if not os.path.isfile(checkpoint):
-        raise ValueError(f'需要输入有效的模型权重路径: {checkpoint}')
+        raise ValueError(f'a valid model checkpoint path is required: {checkpoint}')
     cfg.MODEL.PRETRAINED = checkpoint
     cfg.OUTPUT_DIR = output_dir
     cfg.DATASETS.TEST.SPLIT_NAME = split

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/9/10 下午7:43
+@date: 2020/9/10 7:43 PM
 @file: tsn_recognizer.py
 @author: zj
 @description: 

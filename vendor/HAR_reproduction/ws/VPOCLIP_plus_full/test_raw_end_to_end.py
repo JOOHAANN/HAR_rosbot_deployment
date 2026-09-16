@@ -350,8 +350,9 @@ def load_yolo_model(args, device):
     model.eval()
     model.conf = args.yolo_conf
     model.iou = args.yolo_iou
-    # 类别槽位自适应: 官方80类权重用旧映射[0,31..79]; 自定义模型(如coco_custom50)
-    # 的类别本身就是想要的集合, 槽位=类别id, 直接取全量。
+    # Class-slot adaptation: official 80-class weights use the old mapping [0,31..79];
+    # custom models (e.g. coco_custom50) already have the desired classes as their
+    # full set, so slot == class id and the entire range is used.
     names = getattr(model, "names", None)
     nc = len(names) if names else 80
     if nc != 80:

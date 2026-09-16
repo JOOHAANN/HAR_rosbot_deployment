@@ -62,31 +62,31 @@ def direction_labels(angle: float) -> tuple[str, str, str, str]:
     absolute = abs(angle)
     if absolute < 45.0:
         label4 = "front"
-        label4_zh = "正面"
+        label4_zh = "front"
     elif absolute >= 135.0:
         label4 = "back"
-        label4_zh = "背面"
+        label4_zh = "back"
     elif angle > 0:
         label4 = "right"
-        label4_zh = "右侧"
+        label4_zh = "right"
     else:
         label4 = "left"
-        label4_zh = "左侧"
+        label4_zh = "left"
 
     if absolute < 22.5:
-        label8, label8_zh = "front", "正前"
+        label8, label8_zh = "front", "front"
     elif absolute < 67.5:
         label8, label8_zh = (
-            ("front_right", "右前") if angle > 0 else ("front_left", "左前")
+            ("front_right", "front_right") if angle > 0 else ("front_left", "front_left")
         )
     elif absolute < 112.5:
-        label8, label8_zh = ("right", "正右") if angle > 0 else ("left", "正左")
+        label8, label8_zh = ("right", "right") if angle > 0 else ("left", "left")
     elif absolute < 157.5:
         label8, label8_zh = (
-            ("back_right", "右后") if angle > 0 else ("back_left", "左后")
+            ("back_right", "back_right") if angle > 0 else ("back_left", "back_left")
         )
     else:
-        label8, label8_zh = "back", "正后"
+        label8, label8_zh = "back", "back"
     return label4, label4_zh, label8, label8_zh
 
 

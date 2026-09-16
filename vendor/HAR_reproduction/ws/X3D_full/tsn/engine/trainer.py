@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/8/21 下午8:00
+@date: 2020/8/21 8:00 PM
 @file: trainer.py
 @author: zj
 @description: 

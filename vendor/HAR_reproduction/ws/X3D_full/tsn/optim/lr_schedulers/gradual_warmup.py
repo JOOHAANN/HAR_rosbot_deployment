@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/9/9 下午9:48
+@date: 2020/9/9 9:48 PM
 @file: gradual_warmup.py
 @author: zj
 @description:

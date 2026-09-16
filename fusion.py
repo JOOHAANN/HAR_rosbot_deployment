@@ -131,18 +131,18 @@ class ADLFeatureReducer(nn.Module):
 
         B, T, C, H, W = x.shape
 
-        # 空间卷积
+        # spatial convolution
         x = x.reshape(B * T, C, H, W)
         x = self.spatial_conv(x)
 
         _, C2, H2, W2 = x.shape
         x = x.reshape(B, T, C2, H2, W2)
 
-        # 调整为 Conv1d 需要的 [batch, channel, time]
+        # adjust to the [batch, channel, time] layout Conv1d expects
         x = x.permute(0, 3, 4, 2, 1)
         x = x.reshape(B * H2 * W2, C2, T)
 
-        # 时间卷积
+        # temporal convolution
         x = self.relu(self.temporal_bn(self.temporal_conv(x)))
 
         x = x.reshape(B, -1)
@@ -573,15 +573,15 @@ class PoseADLFeatureExtractor(nn.Module):
         # [B,M,C,T,V] -> [B,T,V,M,C]
         x = x.permute(0, 3, 4, 1, 2).contiguous()
 
-        # 对 person 做 attention
+        # attention over persons
         # attn_logits: [B,T,V,M,1]
         attn_logits = self.person_attn(x)
         attn = torch.softmax(attn_logits, dim=3)
 
-        # 融合 person: [B,T,V,C]
+        # fuse the persons: [B,T,V,C]
         x = (x * attn).sum(dim=3)
 
-        # 每个 time/joint 的 64 维特征 -> 36
+        # project the 64-dim feature of each time/joint to 36
         # [B,T,V,C] -> [B,T,V,36]
         x = self.to_grid(x)
 
@@ -636,7 +636,7 @@ class TriModalFusion(nn.Module):
             )
         self.num_joints = num_joints
 
-        # 线性层用于对齐通道数
+        # linear layers align the channel counts
         self.video_raw_proj = VideoADLFeatureExtractor(in_channels=192, out_channels=video_channels)
         self.pose_raw_proj = PoseADLFeatureExtractor(in_channels=64, grid_size=6)
 

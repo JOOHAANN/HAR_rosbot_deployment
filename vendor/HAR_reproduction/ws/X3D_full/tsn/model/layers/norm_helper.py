@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/9/23 下午2:35
+@date: 2020/9/23 2:35 PM
 @file: norm_helper.py
 @author: zj
 @description: 

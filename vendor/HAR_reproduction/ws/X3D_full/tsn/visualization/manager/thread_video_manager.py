@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/10/22 上午9:22
+@date: 2020/10/22 9:22 AM
 @file: thread_video_manager.py
 @author: zj
 @description: 
