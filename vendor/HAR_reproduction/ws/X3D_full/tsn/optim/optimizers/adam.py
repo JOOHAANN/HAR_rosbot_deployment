@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/8/22 下午9:02
+@date: 2020/8/22 9:02 PM
 @file: adam.py
 @author: zj
 @description: 

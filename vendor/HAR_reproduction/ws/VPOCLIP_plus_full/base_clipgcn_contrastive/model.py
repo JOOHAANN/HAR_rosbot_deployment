@@ -1,16 +1,16 @@
 """
 CLIP-COCO contrastive learning scaffold.
 
-目标架构：
-    image encoder: 你自己写、自己训练
-    text encoder : 使用已经预训练好的 OpenAI CLIP text encoder，并冻结参数
+Target architecture:
+    image encoder: written and trained by you
+    text encoder : a pretrained OpenAI CLIP text encoder with frozen parameters
 
-本文件故意把关键步骤都写成中文注释，方便你顺着注释改。
-训练时你通常只需要：
-    1. 准备一个 DataLoader，每个 batch 返回 images 和 captions
-    2. 调用 model(images, captions)
-    3. 对 logits_per_image / logits_per_text 做交叉熵
-    4. optimizer 只更新 image_encoder 和 logit_scale
+The key steps in this file are commented in detail so you can follow and modify them.
+During training you typically only need to:
+    1. Prepare a DataLoader whose batches return images and captions
+    2. Call model(images, captions)
+    3. Apply cross-entropy to logits_per_image / logits_per_text
+    4. Let the optimizer update only image_encoder and logit_scale
 """
 
 import torch
@@ -19,16 +19,16 @@ from torch import nn
 
 
 # ---------------------------------------------------------------------------
-# 1. 导入 CLIP 包
+# 1. Import the CLIP package
 # ---------------------------------------------------------------------------
-# 你的 clipgcn 环境里已经安装了本地 CLIP：
+# Your clipgcn environment already has the local CLIP installed:
 #   pip install -e /workspace/CLIP
-# 所以这里可以直接 import。
+# so it can be imported directly here.
 import clip
 
 
 def l2_normalize(features):
-    """把特征归一化到单位长度，这样点积就等价于 cosine similarity。"""
+    """Normalize features to unit length so that the dot product equals cosine similarity."""
 
     return F.normalize(features, dim=-1)
 
@@ -57,30 +57,30 @@ class Residual(nn.Module):
 
 class CustomImageEncoder(nn.Module):
     """
-    你要重点修改的部分：自己写 image encoder。
+    The part you should mainly modify: write your own image encoder.
 
-    输入:
-        images 是图片张量，形状是 [batch_size, 3, image_size, image_size]
+    Input:
+        images is an image tensor of shape [batch_size, 3, image_size, image_size]
 
-    输出:
-        image_features 是图像特征，形状是 [batch_size, embed_dim]
+    Output:
+        image_features is the image feature of shape [batch_size, embed_dim]
 
-    关键要求:
-        1. 输出维度必须等于 CLIP text encoder 的输出维度 embed_dim。
-           例如 ViT-B/32 的 embed_dim 是 512。
-        2. forward 只返回未归一化的特征；归一化在外层 ContrastiveModel 统一做。
-        3. 这个模块的参数是需要训练的，所以不要在这里 no_grad。
+    Key requirements:
+        1. The output dimension must equal embed_dim, the output dimension of the CLIP text encoder.
+           For example, ViT-B/32 has embed_dim = 512.
+        2. forward returns unnormalized features only; normalization is handled uniformly by the outer ContrastiveModel.
+        3. The parameters of this module are trainable, so do not use no_grad here.
 
-    下面给了一个很小的 CNN baseline，能跑通训练流程。
-    你可以把 self.backbone / self.projection 换成自己的 ResNet、ViT、CNN-GCN 等。
+    A very small CNN baseline is given below; it runs through the training pipeline.
+    You can replace self.backbone / self.projection with your own ResNet, ViT, CNN-GCN, etc.
     """
 
     def __init__(self, embed_dim):
         super(CustomImageEncoder, self).__init__()
 
-        # Step 1: 写图像特征提取网络。
-        # 这里的例子会把 RGB 图片逐步下采样，然后用 AdaptiveAvgPool2d 压成 [B, C, 1, 1]。
-        # 你真正做实验时，可以把这个 nn.Sequential 整块替换成自己的网络。
+        # Step 1: Build the image feature extraction network.
+        # The example below progressively downsamples the RGB image, then squeezes it to [B, C, 1, 1] with AdaptiveAvgPool2d.
+        # For real experiments you can replace this entire nn.Sequential with your own network.
         self.b1 = nn.Sequential(
             nn.Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=3),
             nn.ReLU(),
@@ -101,19 +101,19 @@ class CustomImageEncoder(nn.Module):
         
         self.b6 = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)))
 
-        # Step 2: 写 projection head，把 backbone 输出投影到 CLIP 文本特征空间。
-        # 如果你的 backbone 最后输出通道不是 256，就把第一个 Linear 的输入维度改掉。
+        # Step 2: Build the projection head that maps the backbone output into the CLIP text feature space.
+        # If the final output channels of your backbone are not 256, change the input dimension of the first Linear.
         self.projection = nn.Sequential(
-            nn.Flatten(),  # [B, 256, 1, 1] 变成 [B, 256]
+            nn.Flatten(),  # [B, 256, 1, 1] becomes [B, 256]
             nn.Linear(512, 512),
             nn.GELU(),
-            nn.Linear(512, embed_dim),  # 最终必须是 [B, embed_dim]
+            nn.Linear(512, embed_dim),  # the final output must be [B, embed_dim]
         )
 
     def forward(self, images):
-        # Step 3: 在 forward 里串起来。
-        # 注意：这里不做 softmax，不做分类头，也不做 CrossEntropyLoss。
-        # 对比学习只需要输出一个向量，让它和 text_features 做相似度。
+        # Step 3: Chain the modules together in forward.
+        # Note: no softmax, no classification head, and no CrossEntropyLoss here.
+        # Contrastive learning only needs an output vector to compute similarity against text_features.
         x = self.b1(images)
         x = self.b2(x)
         x = self.b3(x)
@@ -126,17 +126,17 @@ class CustomImageEncoder(nn.Module):
 
 class FrozenCLIPTextEncoder(nn.Module):
     """
-    预训练 CLIP text encoder 的封装。
+    Wrapper around the pretrained CLIP text encoder.
 
-    你需要知道的接口只有三个：
+    You only need to know three interfaces:
         clip_model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
         tokens = clip.tokenize(["a dog", "a cat"], truncate=True).to(device)
         text_features = clip_model.encode_text(tokens)
 
-    说明：
-        - clip.tokenize 会把字符串变成 token id，shape = [B, 77]
-        - encode_text 会输出文本向量，shape = [B, embed_dim]
-        - 这里会 freeze CLIP 的所有参数，只把它当作固定的 teacher / target space
+    Notes:
+        - clip.tokenize turns strings into token ids, shape = [B, 77]
+        - encode_text outputs text vectors, shape = [B, embed_dim]
+        - All CLIP parameters are frozen here; it serves only as a fixed teacher / target space
     """
 
     def __init__(self, model_name="ViT-B/32", device=None, download_root=None):
@@ -146,8 +146,8 @@ class FrozenCLIPTextEncoder(nn.Module):
             device = "cuda" if torch.cuda.is_available() else "cpu"
         device = torch.device(device)
 
-        # Step 1: 加载 CLIP。第一次运行如果本地没有权重，会下载到 ~/.cache/clip
-        # 或者你传入的 download_root。
+        # Step 1: Load CLIP. On the first run, if there are no local weights, they are downloaded to ~/.cache/clip
+        # or to the download_root you pass in.
         self.clip_model, _ = clip.load(
             model_name,
             device=device,
@@ -155,40 +155,40 @@ class FrozenCLIPTextEncoder(nn.Module):
             download_root=download_root,
         )
 
-        # Step 2: 冻结 text encoder。训练时不会更新 CLIP 参数，只更新你自己的 image encoder。
+        # Step 2: Freeze the text encoder. CLIP parameters are not updated during training; only your own image encoder is updated.
         self.clip_model.eval()
         for parameter in self.clip_model.parameters():
             parameter.requires_grad = False
 
-        # Step 3: 记录输出维度。image encoder 的输出必须和这个维度一致。
+        # Step 3: Record the output dimension. The image encoder output must match this dimension.
         self.embed_dim = int(self.clip_model.text_projection.shape[1])
 
     def get_device(self):
-        # 返回 CLIP text encoder 当前所在的 device，例如 cpu、cuda、cuda:0。
-        # 这样即使后面调用 model.to("cuda")，这里也能拿到最新 device。
+        # Return the device where the CLIP text encoder currently resides, e.g. cpu, cuda, cuda:0.
+        # This way the latest device is still available here even after model.to("cuda") is called later.
         return next(self.clip_model.parameters()).device
 
     def forward(self, captions):
-        # Step 4: captions 可以是一个字符串，也可以是一个 batch 的字符串列表。
-        # truncate=True 可以避免 COCO caption 偶尔过长时报错。
+        # Step 4: captions can be a single string or a list of strings for one batch.
+        # truncate=True prevents errors from an occasional overly long COCO caption.
         with torch.no_grad():
             tokens = clip.tokenize(captions, truncate=True).to(self.get_device())
 
-            # Step 5: 输出 text_features。这里仍然返回未归一化特征，外层统一 normalize。
+            # Step 5: Output text_features. Unnormalized features are still returned here; the outer model normalizes uniformly.
             text_features = self.clip_model.encode_text(tokens)
             return text_features.float()
 
 
 class CLIPCOCOContrastiveModel(nn.Module):
     """
-    最外层对比学习模型。
+    Outermost contrastive learning model.
 
-    forward 的输出:
+    Outputs of forward:
         logits_per_image: shape = [B, B]
         logits_per_text : shape = [B, B]
 
-    第 i 张图片和第 i 条 caption 是正样本。
-    同一个 batch 里的其他 caption / image 自动作为负样本。
+    The i-th image and the i-th caption form the positive pair.
+    All other captions / images in the same batch automatically act as negatives.
     """
 
     def __init__(self, text_model_name="ViT-B/32", device=None, download_root=None):
@@ -201,38 +201,38 @@ class CLIPCOCOContrastiveModel(nn.Module):
         )
         self.image_encoder = CustomImageEncoder(embed_dim=self.text_encoder.embed_dim)
 
-        # CLIP 原论文常用 temperature = 0.07，所以 logit_scale 初始为 log(1/0.07)。
-        # 这是可训练参数，训练时会自动学习相似度分数的尺度。
+        # The original CLIP paper commonly uses temperature = 0.07, so logit_scale is initialized to log(1/0.07).
+        # This is a trainable parameter; during training the scale of the similarity scores is learned automatically.
         self.logit_scale = nn.Parameter(torch.ones([]) * torch.log(torch.tensor(1 / 0.07)))
 
-        # 把你自己写的 image encoder 和 logit_scale 放到 text encoder 同一个 device。
-        # 否则在有 CUDA 的机器上会出现 images 在 GPU、image_encoder 权重还在 CPU 的错误。
+        # Move your own image encoder and logit_scale to the same device as the text encoder.
+        # Otherwise errors occur on CUDA machines where images are on GPU but image_encoder weights are still on CPU.
         self.to(self.text_encoder.get_device())
 
     def train(self, mode=True):
-        # 正常训练你自己的 image encoder。
+        # Train your own image encoder normally.
         super().train(mode)
 
-        # 但 CLIP text encoder 是冻结的，所以始终保持 eval 状态。
+        # But the CLIP text encoder is frozen, so it always stays in eval mode.
         self.text_encoder.clip_model.eval()
         return self
 
     def forward(self, images, captions):
-        # Step 1: 保证图片和 text encoder 在同一个 device。
+        # Step 1: Make sure the images are on the same device as the text encoder.
         images = images.to(self.text_encoder.get_device())
 
-        # Step 2: 分别得到 image/text features。
-        # image_features 会有梯度，用来训练你的 image encoder。
-        # text_features 没有梯度，因为 CLIP text encoder 已被冻结。
+        # Step 2: Obtain image/text features separately.
+        # image_features carry gradients and train your image encoder.
+        # text_features have no gradient because the CLIP text encoder is frozen.
         image_features = self.image_encoder(images)
         text_features = self.text_encoder(captions)
 
-        # Step 3: 归一化后做矩阵乘法，得到 batch 内两两相似度。
+        # Step 3: Normalize, then do matrix multiplication to get pairwise similarities within the batch.
         image_features = l2_normalize(image_features)
         text_features = l2_normalize(text_features)
 
-        # Step 4: logit_scale.exp() 相当于 1 / temperature。
-        # clamp 是为了防止训练中温度尺度爆掉。
+        # Step 4: logit_scale.exp() is equivalent to 1 / temperature.
+        # clamp prevents the temperature scale from exploding during training.
         scale = self.logit_scale.exp().clamp(max=100)
         logits_per_image = scale * image_features @ text_features.t()
         logits_per_text = logits_per_image.t()
@@ -240,10 +240,10 @@ class CLIPCOCOContrastiveModel(nn.Module):
 
     def contrastive_loss(self, images, captions):
         """
-        一个最小训练 loss 示例。
+        A minimal training loss example.
 
         labels = [0, 1, 2, ..., B-1]
-        表示第 i 张图片应该匹配第 i 条 caption。
+        indicates that the i-th image should match the i-th caption.
         """
 
         logits_per_image, logits_per_text = self(images, captions)
@@ -257,9 +257,9 @@ class CLIPCOCOContrastiveModel(nn.Module):
 
 def build_model(text_model_name="ViT-B/32", device=None, download_root=None):
     """
-    给训练脚本用的构造函数。
+    Constructor for the training script.
 
-    示例:
+    Example:
         model = build_model(device="cuda")
         loss = model.contrastive_loss(images, captions)
         loss.backward()
@@ -275,17 +275,17 @@ def build_model(text_model_name="ViT-B/32", device=None, download_root=None):
 
 def train_step_example(model, optimizer, images, captions):
     """
-    单步训练伪代码，方便你写 model_train.py 时照着搬。
+    Pseudo-code for a single training step, so you can copy it when writing model_train.py.
 
-    注意：
-        captions 必须和 images 一一对应。
-        例如 images[0] 对应 captions[0]，images[1] 对应 captions[1]。
+    Note:
+        captions must correspond one-to-one with images.
+        For example, images[0] corresponds to captions[0], images[1] to captions[1].
     """
 
     model.train()
 
-    # CLIP text encoder 被冻结，但 model.train() 会把所有子模块切到 train。
-    # 所以这里再把它切回 eval，避免 dropout/bn 之类状态改变。
+    # The CLIP text encoder is frozen, but model.train() switches all submodules to train mode.
+    # So switch it back to eval here to avoid state changes such as dropout/bn.
     model.text_encoder.clip_model.eval()
 
     optimizer.zero_grad(set_to_none=True)
@@ -300,15 +300,15 @@ if __name__ == "__main__":
 
     print("device:", next(model.image_encoder.parameters()).device)
 
-    # torchsummary 只能处理“输入是张量”的模型。
-    # 整个 CLIPCOCOContrastiveModel 的 forward 需要 images 和 captions 两个输入，
-    # captions 是字符串列表，所以不要直接 summary(model, ...)。
-    # 如果想看结构，summary 你自己写的 image_encoder 就可以。
+    # torchsummary only handles models whose input is a tensor.
+    # The forward of the whole CLIPCOCOContrastiveModel requires two inputs, images and captions,
+    # and captions is a list of strings, so do not call summary(model, ...) directly.
+    # To see the structure, summarizing your own image_encoder is enough.
     from torchsummary import summary
     summary(model.image_encoder, (3, 224, 224), device=device)
 
-    # # 如果想测试整个对比学习模型，需要同时给图片和文字。
-    # # 这里构造一个假的 batch，只检查 forward 能不能跑通。
+    # # To test the whole contrastive model, both images and text must be provided.
+    # # Here a fake batch is constructed only to check whether forward runs.
     # model.eval()
     # images = torch.randn(2, 3, 224, 224)
     # captions = ["a dog on the grass", "a cat on the sofa"]

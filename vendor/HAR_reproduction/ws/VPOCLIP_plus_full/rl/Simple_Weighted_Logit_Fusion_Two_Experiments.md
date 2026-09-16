@@ -1,59 +1,59 @@
-# Simple Weighted Logit Fusion：两个轻量实验
+# Simple Weighted Logit Fusion: Two Lightweight Experiments
 
-本轮只做两个简单 fusion 实验，不继续增加复杂模型。
+This round runs only two simple fusion experiments; no further complex models.
 
-共同融合形式：
+Common fusion form:
 
 \[
 z_{fused}=\sum_{v=1}^{K} w_v z_v,\qquad \sum_v w_v=1
 \]
 
-其中 \(z_v\) 是每个 view 的分类 logits。
+where \(z_v\) is the classification logits of each view.
 
 ---
 
-## 0. 非常重要：两个实验完全分开
+## 0. Very Important: The Two Experiments Are Fully Separate
 
-请新建两个独立目录：
+Create two separate directories:
 
 ```text
 work_dir/fusion_lightweight_gating_v1/
 work_dir/fusion_rule_based_v1/
 ```
 
-如需新脚本：
+If new scripts are needed:
 
 ```text
 rl/fusion_lightweight_gating_v1.py
 rl/fusion_rule_based_v1.py
 ```
 
-日志也分开：
+Logs are also separate:
 
 ```text
 logs/fusion_lightweight_gating_v1.log
 logs/fusion_rule_based_v1.log
 ```
 
-要求：
+Requirements:
 
 ```text
-不要覆盖以前任何代码
-不要覆盖旧 checkpoint
-不要覆盖旧 cache
-不要覆盖旧 log
-不要覆盖旧 work_dir
-不要修改旧 RL
-不要重新训练 VPOCLIP
+Do not overwrite any previous code
+Do not overwrite old checkpoints
+Do not overwrite old caches
+Do not overwrite old logs
+Do not overwrite old work_dirs
+Do not modify the old RL
+Do not retrain VPOCLIP
 ```
 
-两个实验只读取现有 checkpoint / cache，输出写入各自新目录。
+Both experiments only read existing checkpoints / caches and write outputs to their own new directories.
 
 ---
 
-# 1. 共同 Baseline
+# 1. Common Baseline
 
-当前 Equal Mean Fusion：
+The current Equal Mean Fusion:
 
 \[
 w_v=rac{1}{K}
@@ -63,9 +63,9 @@ w_v=rac{1}{K}
 z_{mean}=rac{1}{K}\sum_v z_v
 \]
 
-所有新方法都必须和这个 baseline 在完全相同的 view set 上比较。
+All new methods must be compared against this baseline on exactly the same view sets.
 
-测试：
+Test view sets:
 
 ```text
 Random-2
@@ -77,21 +77,21 @@ All-valid views
 
 ---
 
-# 2. Experiment A：Lightweight Gating Network
+# 2. Experiment A: Lightweight Gating Network
 
-目录：
+Directory:
 
 ```text
 work_dir/fusion_lightweight_gating_v1/
 ```
 
-目标：
+Goal:
 
-用一个很小的共享网络，根据每个已经观察到的 view 的质量和几何信息，输出一个 scalar weight。
+Use a very small shared network that, based on the quality and geometry information of each observed view, outputs a scalar weight.
 
 ---
 
-## 2.1 每个 view 的输入
+## 2.1 Per-View Inputs
 
 ### Classification
 
@@ -101,7 +101,7 @@ margin               1
 max probability      1
 ```
 
-建议：
+Suggested:
 
 ```text
 entropy = normalized entropy
@@ -111,7 +111,7 @@ max probability = max softmax probability
 
 ### Temporal stability
 
-只使用已有 cache 里已经有的字段，优先：
+Use only fields already present in the existing cache, preferring:
 
 ```text
 entropy_std
@@ -120,9 +120,9 @@ logit_variance_mean
 margin_std
 ```
 
-总共使用 2~4 个即可。
+Using 2–4 in total is sufficient.
 
-没有的字段不要伪造。
+Do not fabricate fields that do not exist.
 
 ### Geometry
 
@@ -134,22 +134,22 @@ sin(elevation)
 cos(elevation)
 ```
 
-共 4 维。
+4 dimensions in total.
 
 ### Relative diversity
 
-每个 view 相对于其他已观察 views 的平均 angular distance：
+The mean angular distance of each view to the other observed views:
 
 \[
 D_v=rac{1}{K-1}\sum_{j
 eq v} d_{angle}(v,j)
 \]
 
-normalize 到 0~1。
+Normalize to 0–1.
 
 ### Cross-view JS
 
-每个 view 和其他 view 的 prediction distribution 做平均 JS divergence：
+The mean JS divergence between the prediction distribution of each view and the other views:
 
 \[
 JS_v=rac{1}{K-1}\sum_{j
@@ -158,9 +158,9 @@ eq v}JS(p_v,p_j)
 
 ---
 
-## 2.2 最终输入维度
+## 2.2 Final Input Dimension
 
-大约：
+Approximately:
 
 ```text
 entropy                 1
@@ -177,9 +177,9 @@ total                 ~11-13
 
 ---
 
-## 2.3 网络
+## 2.3 Network
 
-保持非常轻量：
+Keep it very lightweight:
 
 ```text
 Input D
@@ -192,67 +192,67 @@ Linear(16, 1)
 score e_v
 ```
 
-所有 views 共用同一个网络。
+All views share the same network.
 
-不要：
+Do not use:
 
 ```text
 Transformer
-大 MLP
-512-D feature 输入
-完整 logits 输入
+large MLP
+512-D feature input
+full logits input
 camera-specific network
 ```
 
 ---
 
-## 2.4 权重与融合
+## 2.4 Weights and Fusion
 
-对一个 sample 的所有已观察 views：
+For all observed views of a sample:
 
 \[
 w_v=softmax(e_v)
 \]
 
-最终：
+Finally:
 
 \[
 z_{fused}=\sum_v w_v z_v
 \]
 
-VPOCLIP 全部 freeze，只训练这个小 gating network。
+VPOCLIP is fully frozen; only this small gating network is trained.
 
-Loss：
+Loss:
 
 \[
 L=CE(z_{fused},y_{GT})
 \]
 
-最后一层初始化接近 0，使初始：
+The last layer is initialized near 0 so that initially:
 
 \[
 w_vpprox 1/K
 \]
 
-也就是从当前 equal mean 开始学习。
+That is, it starts learning from the current equal mean.
 
 ---
 
-# 3. Experiment B：Rule-Based Weighted Fusion
+# 3. Experiment B: Rule-Based Weighted Fusion
 
-目录：
+Directory:
 
 ```text
 work_dir/fusion_rule_based_v1/
 ```
 
-这个实验：
+This experiment:
 
 ```text
-不训练任何网络
+does not train any network
 ```
 
-只使用：
+Uses only:
 
 ```text
 entropy
@@ -261,37 +261,37 @@ skeleton visibility
 body-camera orientation
 ```
 
-计算 view weight。
+to compute the view weight.
 
 ---
 
 ## 3.1 Entropy Score
 
-normalized entropy：
+Normalized entropy:
 
 \[
 H_v^{norm}\in[0,1]
 \]
 
-定义：
+Definition:
 
 \[
 S_H(v)=1-H_v^{norm}
 \]
 
-即 entropy 越低，score 越高。
+That is, the lower the entropy, the higher the score.
 
 ---
 
 ## 3.2 Margin Score
 
-使用 probability top1-top2 margin：
+Use the probability top1–top2 margin:
 
 \[
 M_v=p_{(1)}-p_{(2)}
 \]
 
-normalize 到 0~1：
+Normalize to 0–1:
 
 \[
 S_M(v)=M_v^{norm}
@@ -301,36 +301,36 @@ S_M(v)=M_v^{norm}
 
 ## 3.3 Skeleton Visibility
 
-如果当前 cache 有 valid / visible joint mask：
+If the current cache has a valid / visible joint mask:
 
 \[
 S_{vis}(v)=rac{visible\ joints}{total\ joints}
 \]
 
-范围 0~1。
+Range 0–1.
 
-不重新训练 pose model。
+Do not retrain the pose model.
 
 ---
 
 ## 3.4 Body Orientation
 
-定义角度：
+Define the angle:
 
 ```text
-0°   = 人正面对摄像头
-90°  = 人侧面对摄像头
-180° = 人完全背对摄像头
+0°   = person facing the camera
+90°  = person side-facing the camera
+180° = person fully back to the camera
 ```
 
-希望：
+Desired behavior:
 
 ```text
-30° ~ 90° 最佳
-背对摄像头明显扣分
+30°–90° is best
+facing away from the camera incurs a clear penalty
 ```
 
-使用简单 rule：
+Use a simple rule:
 
 ```text
 if angle < 30:
@@ -346,7 +346,7 @@ else:
     score = 0.2
 ```
 
-即：
+That is:
 
 ```text
 0°      -> 0.8
@@ -357,15 +357,15 @@ else:
 
 ---
 
-# 4. Rule-Based 三个简单版本
+# 4. Three Simple Rule-Based Versions
 
-## Rule-1：Classification Only
+## Rule-1: Classification Only
 
 \[
 S_v=0.5S_H+0.5S_M
 \]
 
-即：
+That is:
 
 ```text
 entropy 50%
@@ -374,13 +374,13 @@ margin  50%
 
 ---
 
-## Rule-2：Skeleton / Orientation Only
+## Rule-2: Skeleton / Orientation Only
 
 \[
 S_v=0.5S_{vis}+0.5S_{ori}
 \]
 
-即：
+That is:
 
 ```text
 visibility  50%
@@ -389,7 +389,7 @@ orientation 50%
 
 ---
 
-## Rule-3：Combined
+## Rule-3: Combined
 
 \[
 S_v=
@@ -402,7 +402,7 @@ S_v=
 0.20S_{ori}
 \]
 
-即：
+That is:
 
 ```text
 entropy      30%
@@ -411,33 +411,33 @@ visibility   20%
 orientation  20%
 ```
 
-这是主要 rule-based 方法。
+This is the main rule-based method.
 
 ---
 
-## 4.1 Rule weight
+## 4.1 Rule Weight
 
-最终：
+Finally:
 
 \[
 w_v=rac{S_v}{\sum_j S_j}
 \]
 
-然后：
+Then:
 
 \[
 z_{fused}=\sum_v w_vz_v
 \]
 
-禁止在 true unseen 上修改这些系数。
+Modifying these coefficients on true unseen is forbidden.
 
-如果要改，只能根据 seen validation。
+If changes are needed, they must be based on seen validation only.
 
 ---
 
 # 5. Evaluation
 
-比较：
+Compare:
 
 ```text
 Equal Mean Fusion
@@ -447,7 +447,7 @@ Rule-2 Skeleton/Orientation
 Rule-3 Combined
 ```
 
-使用完全相同的：
+Use exactly the same:
 
 ```text
 Random-2
@@ -457,7 +457,7 @@ Orthogonal-3
 All-valid
 ```
 
-分别报告：
+Report separately:
 
 ```text
 Seen
@@ -466,7 +466,7 @@ True unseen
 
 ---
 
-# 6. 输出表
+# 6. Output Table
 
 | View Set | Mean | Lightweight Net | Rule-Cls | Rule-Geo | Rule-Combined |
 |---|---:|---:|---:|---:|---:|
@@ -476,7 +476,7 @@ True unseen
 | Orthogonal-3 | | | | | |
 | All-valid | | | | | |
 
-每个方法报告：
+Each method reports:
 
 ```text
 Top-1
@@ -484,7 +484,7 @@ Delta vs Equal Mean
 paired bootstrap 95% CI
 ```
 
-同时保存：
+Also save:
 
 ```text
 sample_id
@@ -499,44 +499,44 @@ final prediction
 
 ---
 
-# 7. Codex 直接执行指令
+# 7. Direct Execution Instructions for Codex
 
 ```text
-本轮只做两个新的 fusion 实验。
+This round runs only two new fusion experiments.
 
-非常重要：
-两个实验必须放在两个全新的独立目录中。
+Very important:
+The two experiments must be placed in two completely new, separate directories.
 
-创建：
+Create:
 
 work_dir/fusion_lightweight_gating_v1/
 work_dir/fusion_rule_based_v1/
 
-如需脚本：
+If scripts are needed:
 
 rl/fusion_lightweight_gating_v1.py
 rl/fusion_rule_based_v1.py
 
-日志：
+Logs:
 
 logs/fusion_lightweight_gating_v1.log
 logs/fusion_rule_based_v1.log
 
-不要覆盖或修改任何旧实验。
+Do not overwrite or modify any old experiment.
 
 ==================================================
 EXPERIMENT A
 LIGHTWEIGHT GATING NETWORK
 ==================================================
 
-每个 view 输入：
+Per-view inputs:
 
 - normalized entropy
 - top1-top2 probability margin
 - max probability
 
 temporal stability:
-从已有 cache 选择 2~4 个：
+select 2–4 from the existing cache:
 - entropy_std
 - top1_switch_rate
 - logit_variance_mean
@@ -552,38 +552,38 @@ plus:
 - relative angular diversity
 - mean cross-view JS divergence
 
-输入总维度约 11~13。
+Total input dimension is about 11–13.
 
-网络：
+Network:
 
 D
 -> Linear(16)
 -> ReLU
 -> Linear(1)
 
-所有 views 共用同一个 network。
+All views share the same network.
 
 weights = softmax(view_scores)
 
 z_fused = sum(weight_v * logits_v)
 
-freeze VPOCLIP。
-只训练这个 gating network。
+Freeze VPOCLIP.
+Train only this gating network.
 
 loss:
 cross entropy of fused logits.
 
-最后一层初始化接近 0，
-使初始 weights 接近 uniform。
+Initialize the last layer near 0,
+so that initial weights are near uniform.
 
 ==================================================
 EXPERIMENT B
 RULE-BASED WEIGHTED FUSION
 ==================================================
 
-不训练网络。
+No network is trained.
 
-每个 view：
+Per view:
 
 1. S_H = 1 - normalized_entropy
 
@@ -606,7 +606,7 @@ elif angle <= 150:
 else:
     score = 0.2
 
-测试：
+Test:
 
 Rule-1:
 0.5 * S_H
@@ -622,19 +622,19 @@ Rule-3:
 + 0.20 * S_vis
 + 0.20 * S_ori
 
-最终：
+Finally:
 
 w_v = S_v / sum(S)
 
 z_fused = sum(w_v * logits_v)
 
-禁止使用 true unseen 调系数。
+Using true unseen to tune the coefficients is forbidden.
 
 ==================================================
 COMMON EVALUATION
 ==================================================
 
-比较：
+Compare:
 
 Equal Mean
 Lightweight Gating
@@ -650,42 +650,42 @@ Random-3
 Orthogonal-3
 All-valid
 
-分别报告：
+Report separately:
 
 Seen
 True unseen
 
-输出：
+Output:
 
 Top-1
 Delta vs Mean
 paired bootstrap 95% CI
 
-保存每个 sample 的最终 weights。
+Save the final weights of each sample.
 
 ==================================================
 IMPORTANT
 ==================================================
 
-不要继续 PPO。
-不要上 Transformer。
-不要做 feature-level fusion。
-不要重新训练 VPOCLIP。
+Do not continue PPO.
+Do not add a Transformer.
+Do not do feature-level fusion.
+Do not retrain VPOCLIP.
 
-这轮跑完以后只输出结果和分析，
-不要自动继续更复杂的 fusion。
+After this round finishes, only output results and analysis;
+do not automatically continue with more complex fusion.
 ```
 
 ---
 
-# 8. 本轮目标
+# 8. Goals of This Round
 
-Experiment A 回答：
+Experiment A answers:
 
-> 一个 10 多维输入、只有一层 hidden layer 的轻量 gating network，是否能比 equal mean 更好？
+> Can a lightweight gating network with a ~10-dimensional input and a single hidden layer beat equal mean?
 
-Experiment B 回答：
+Experiment B answers:
 
-> 完全不用网络，只用 entropy + margin + skeleton visibility + body orientation，是否已经足以得到更合理的 view weights？
+> Without any network, is entropy + margin + skeleton visibility + body orientation already sufficient to obtain more reasonable view weights?
 
-如果两个方法都几乎等于 Equal Mean，就先停，不要马上上复杂网络。
+If both methods are almost equal to Equal Mean, stop here for now; do not immediately move to a complex network.

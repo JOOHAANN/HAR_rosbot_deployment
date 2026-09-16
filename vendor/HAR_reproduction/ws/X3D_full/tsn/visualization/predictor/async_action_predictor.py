@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/10/22 上午9:39
+@date: 2020/10/22 9:39 AM
 @file: async_action_predictor.py
 @author: zj
 @description: 

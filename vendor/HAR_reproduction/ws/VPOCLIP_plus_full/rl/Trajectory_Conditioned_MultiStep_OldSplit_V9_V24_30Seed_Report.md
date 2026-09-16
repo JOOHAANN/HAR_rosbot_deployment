@@ -1,30 +1,30 @@
-# 旧 50/5 划分：轨迹策略与 SC-NBV v9–v24 的统一评测
+# Old 50/5 Split: Unified Evaluation of Trajectory Policies and SC-NBV v9–v24
 
-## 1. 评测协议
+## 1. Evaluation Protocol
 
-- 数据划分：历史旧版 50/5；真实 unseen 类 ID 为 `[0, 2, 26, 34, 50]`。
-- 测试集：414 个有效 unseen episode。
-- 训练 seed：`20260909、20260910、20260911`。
-- 评测 seed：严格复用同一组 `20260920–20260949`（30 个 seed）。
-- 固定起点：分别从 `view0、view1、view2、view3` 开始，表中固定起点结果为四者平均。
-- 随机起点：每个 episode 在有效视角中随机选择起点；Policy 和 Random 使用相同的起点与路径 seed。
-- `moves=1`：融合 2 个视角；`moves=2`：融合 3 个视角。
-- `Single`：只使用起始视角；`Random`：随机选择后续视角；`Policy`：模型选择后续视角。
-- Fixed 的 Random 列是 30 个评测 seed 的平均；Random-start 表中的区间直接来自 30 个评测 seed。
+- Data split: historical old 50/5 split; real unseen class IDs are `[0, 2, 26, 34, 50]`.
+- Test set: 414 valid unseen episodes.
+- Training seeds: `20260909, 20260910, 20260911`.
+- Evaluation seeds: strictly the same set of `20260920–20260949` (30 seeds).
+- Fixed starts: starting from `view0, view1, view2, view3` respectively; fixed-start results in the tables are averages over the four.
+- Random start: each episode randomly selects a start among valid views; Policy and Random use the same start and path seeds.
+- `moves=1`: fusing 2 views; `moves=2`: fusing 3 views.
+- `Single`: starting view only; `Random`: subsequent views selected randomly; `Policy`: subsequent views selected by the model.
+- The Fixed Random column is the average over the 30 evaluation seeds; intervals in the random-start table come directly from the 30 evaluation seeds.
 
-固定起点四视角平均的 Single 为 **49.46%**；随机起点的 Single 平均为 **49.86%**。这两个基线与模型版本无关。
+The fixed-start four-view-average Single is **49.46%**; the random-start Single average is **49.86%**. These two baselines are independent of the model version.
 
-95% CI 使用双侧 Student-t 区间：固定起点以 3 个训练 seed 为样本（df=2），随机起点以 30 个评测 seed 为样本（df=29）；`Δ` 始终是同一 seed 下配对的 `Policy - Random`。
+The 95% CIs are two-sided Student-t intervals: for fixed starts the sample is the 3 training seeds (df=2), and for random starts the sample is the 30 evaluation seeds (df=29); `Δ` is always the paired `Policy - Random` under the same seed.
 
-本报告目前包含已经完成的 `v1、v4、v5、v6、object_only、geometry_only`，以及前几天的 `SC-NBV v9–v24`。v3 的旧划分 bbox-size 轨迹仍在提取，未将未完成结果写入下表，完成后追加。
+This report currently covers the completed `v1, v4, v5, v6, object_only, geometry_only`, plus the earlier `SC-NBV v9–v24`. Extraction of the v3 old-split bbox-size trajectory is still in progress; unfinished results are not included in the tables below and will be appended once completed.
 
-SC-NBV v9–v24 使用各版本配置中由验证集确定的 canonical `selected_variant` 和已有 checkpoint；本次只在统一的旧划分 414 个 unseen episode 上重评，没有根据旧测试集重新挑选模型。
+SC-NBV v9–v24 use the canonical `selected_variant` determined by the validation set in each variant's configuration, together with existing checkpoints; this evaluation only re-evaluates on the unified old-split set of 414 unseen episodes and does not re-select models based on the old test set.
 
-## 2. 固定起点：view0–view3 平均
+## 2. Fixed Start: view0–view3 Average
 
-百分数区间为 95% CI；固定起点的 Random 为 30-seed 平均，未重复展开其区间。
+Percentage intervals are 95% CIs; fixed-start Random is the 30-seed average, and its interval is not expanded separately.
 
-| 模型 | 2视角 Policy [95% CI] | Random | Δ Policy−Random [95% CI] | 3视角 Policy [95% CI] | Random | Δ Policy−Random [95% CI] |
+| Model | 2-view Policy [95% CI] | Random | Δ Policy−Random [95% CI] | 3-view Policy [95% CI] | Random | Δ Policy−Random [95% CI] |
 |---|---:|---:|---:|---:|---:|---:|
 | v1 | 52.36 [51.76,52.96]% | 52.06% | +0.30 [-0.30,+0.90]pp | 53.36 [52.67,54.05]% | 53.08% | +0.28 [-0.41,+0.97]pp |
 | v4 | 51.85 [51.77,51.94]% | 52.06% | -0.21 [-0.29,-0.12]pp | **53.60 [53.52,53.69]%** | 53.08% | **+0.52 [+0.43,+0.61]pp** |
@@ -49,9 +49,9 @@ SC-NBV v9–v24 使用各版本配置中由验证集确定的 canonical `selecte
 | v23 | 52.11 [50.59,53.64]% | 52.06% | +0.06 [-1.47,+1.58]pp | 53.32 [53.06,53.58]% | 53.08% | +0.24 [-0.02,+0.50]pp |
 | v24 | 52.42 [51.82,53.02]% | 52.06% | +0.36 [-0.24,+0.96]pp | 53.44 [51.17,55.71]% | 53.08% | +0.36 [-1.91,+2.63]pp |
 
-## 3. 随机起点：30 个评测 seed
+## 3. Random Start: 30 Evaluation Seeds
 
-| 模型 | 2视角 Policy [95% CI] | Random [95% CI] | Δ [95% CI] | 3视角 Policy [95% CI] | Random [95% CI] | Δ [95% CI] |
+| Model | 2-view Policy [95% CI] | Random [95% CI] | Δ [95% CI] | 3-view Policy [95% CI] | Random [95% CI] | Δ [95% CI] |
 |---|---:|---:|---:|---:|---:|---:|
 | v1 | 52.34 [52.04,52.65]% | 51.88 [51.49,52.26]% | **+0.46 [+0.13,+0.80]pp** | 53.43 [53.26,53.60]% | 53.09 [52.85,53.34]% | **+0.34 [+0.09,+0.59]pp** |
 | v4 | 51.91 [51.54,52.28]% | 51.88 [51.49,52.26]% | +0.03 [-0.43,+0.49]pp | **53.63 [53.33,53.92]%** | 53.09 [52.85,53.34]% | **+0.53 [+0.19,+0.88]pp** |
@@ -76,21 +76,21 @@ SC-NBV v9–v24 使用各版本配置中由验证集确定的 canonical `selecte
 | v23 | 52.34 [52.06,52.63]% | 51.88 [51.49,52.26]% | **+0.47 [+0.16,+0.77]pp** | 53.31 [53.15,53.48]% | 53.09 [52.85,53.34]% | +0.22 [-0.06,+0.51]pp |
 | v24 | 52.50 [52.18,52.82]% | 51.88 [51.49,52.26]% | **+0.62 [+0.27,+0.97]pp** | 53.47 [53.32,53.63]% | 53.09 [52.85,53.34]% | **+0.38 [+0.08,+0.68]pp** |
 
-## 4. 如何解读
+## 4. How to Read the Results
 
-1. 在旧划分的随机起点协议下，完整轨迹策略 v1 两个步数都超过 Random：`52.34% vs 51.88%`、`53.43% vs 53.09%`，配对 95% CI 均不跨 0。
-2. 在 SC-NBV v9–v24 中，v9 的随机起点结果最突出：移动 1 次为 **52.58%**、移动 2 次为 **53.48%**；两者相对 Random 的 CI 都高于 0。v24 也在两个步数上超过 Random，分别为 **+0.62pp** 和 **+0.38pp**，且 CI 不跨 0。
-3. v4 在移动 2 次时表现最好的一组之一：随机起点 **53.63%**，Δ=`+0.53pp`；但移动 1 次只有 `+0.03pp`，不能称为两种步数都稳定优于 Random。
-4. v17、v18、v19 在移动 2 次时有正向收益；v16、v23 主要在移动 1 次体现收益。v10、v11、v15、v21、v22 在至少一个协议下明显低于 Random。
-5. `geometry_only` 在随机起点移动 1 次显著低于 Random，说明候选几何本身不足以预测识别收益；物体/人体时序或直接传感器摘要仍然有作用。
-6. 这些差值通常只有约 `0.3–0.7pp`；30 个 seed 主要刻画路径随机性，不等于 30 份独立测试集，因此结论应表述为“在该旧划分和该评测协议下观察到稳定优势”，不应泛化为普适统计结论。
+1. Under the old-split random-start protocol, the full trajectory policy v1 exceeds Random at both move counts: `52.34% vs 51.88%`, `53.43% vs 53.09%`, with paired 95% CIs not crossing 0.
+2. Among SC-NBV v9–v24, v9 has the most prominent random-start results: 1 move at **52.58%** and 2 moves at **53.48%**; the CIs relative to Random are above 0 in both cases. v24 also exceeds Random at both move counts, by **+0.62pp** and **+0.38pp** respectively, with CIs not crossing 0.
+3. v4 is among the best for 2 moves: **53.63%** on random start, Δ=`+0.53pp`; but for 1 move it gains only `+0.03pp`, so it cannot be called stably better than Random at both move counts.
+4. v17, v18, v19 show positive gains at 2 moves; v16 and v23 show gains mainly at 1 move. v10, v11, v15, v21, v22 are clearly below Random in at least one protocol.
+5. `geometry_only` is significantly below Random at 1 move with random starts, showing that candidate geometry alone is insufficient to predict recognition gain; temporal object/human or direct sensor summaries still matter.
+6. These differences are typically only about `0.3–0.7pp`; the 30 seeds mainly characterize path randomness and do not equal 30 independent test sets, so conclusions should be stated as "a stable advantage observed on this old split under this evaluation protocol" and not generalized into a universal statistical claim.
 
-## 5. 版本与结果文件
+## 5. Versions and Result Files
 
-- 轨迹策略旧划分结果：`work_dir/trajectory_ablation_old_split/eval_30seeds_recheck/`
-- SC-NBV v9–v24 旧划分结果：`work_dir/sc_nbv_v9_v24_old_split_30seeds/`
-- SC-NBV v9–v24 评测日志：`logs/sc_nbv_v9_v24_old_split_30seeds.log`
-- 轨迹策略评测日志：`logs/trajectory_ablation_old_split_*_30seeds_recheck.log`
-- v3 bbox-size 提取日志：`logs/trajectory_ablation_old_split_v3_bbox_extract.log`
+- Trajectory-policy old-split results: `work_dir/trajectory_ablation_old_split/eval_30seeds_recheck/`
+- SC-NBV v9–v24 old-split results: `work_dir/sc_nbv_v9_v24_old_split_30seeds/`
+- SC-NBV v9–v24 evaluation log: `logs/sc_nbv_v9_v24_old_split_30seeds.log`
+- Trajectory-policy evaluation logs: `logs/trajectory_ablation_old_split_*_30seeds_recheck.log`
+- v3 bbox-size extraction log: `logs/trajectory_ablation_old_split_v3_bbox_extract.log`
 
-每个版本目录中的 `summary.json` 保存了 30 个 seed 的逐 seed 明细；本报告中的 CI 是从这些原始明细重新计算得到的。
+The `summary.json` in each variant directory stores the per-seed details for the 30 seeds; the CIs in this report are recomputed from these raw details.

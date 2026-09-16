@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/10/22 上午9:37
+@date: 2020/10/22 9:37 AM
 @file: async_visualizer.py
 @author: zj
 @description: 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/10/22 上午9:30
+@date: 2020/10/22 9:30 AM
 @file: util.py
 @author: zj
 @description: 

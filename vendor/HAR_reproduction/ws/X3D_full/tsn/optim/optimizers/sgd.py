@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/8/22 下午8:55
+@date: 2020/8/22 8:55 PM
 @file: sgd.py
 @author: zj
 @description: 

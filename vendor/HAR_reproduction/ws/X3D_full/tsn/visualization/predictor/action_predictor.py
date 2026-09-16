@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/10/22 上午9:29
+@date: 2020/10/22 9:29 AM
 @file: action_predictor.py
 @author: zj
 @description: 

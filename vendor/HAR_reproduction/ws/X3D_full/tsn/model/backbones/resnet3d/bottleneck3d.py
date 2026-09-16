@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/9/28 下午4:35
+@date: 2020/9/28 4:35 PM
 @file: bottleneck3d.py
 @author: zj
 @description: 
@@ -17,23 +17,23 @@ class Bottleneck3d(nn.Module):
     """
 
     def __init__(self,
-                 # 输入通道
+                 # input channels
                  inplanes,
-                 # 输出通道
+                 # output channels
                  planes,
-                 # 空间步长
+                 # spatial stride
                  spatial_stride=1,
-                 # 是否膨胀
+                 # whether to inflate
                  inflate=True,
-                 # 膨胀类型
+                 # inflation type
                  inflate_style='3x1x1',
-                 # 膨胀系数
+                 # expansion factor
                  expansion=4,
-                 # 卷积层类型
+                 # conv layer type
                  conv_layer=None,
-                 # 归一化层类型
+                 # norm layer type
                  norm_layer=None,
-                 # 激活层类型
+                 # activation layer type
                  act_layer=None):
         super().__init__()
         assert inflate_style in ['3x1x1', '3x3x3']
@@ -44,23 +44,23 @@ class Bottleneck3d(nn.Module):
         if act_layer is None:
             act_layer = nn.ReLU
 
-        # 输入通道
+        # input channels
         self.inplanes = inplanes
-        # 输出通道
+        # output channels
         self.planes = planes
-        # 空间步长
+        # spatial stride
         self.spatial_stride = spatial_stride
-        # 是否膨胀
+        # whether to inflate
         self.inflate = inflate
-        # 膨胀类型
+        # inflation type
         self.inflate_style = inflate_style
-        # 膨胀系数
+        # expansion factor
         self.expansion = expansion
-        # 卷积层类型
+        # conv layer type
         self.conv_layer = conv_layer
-        # 归一化层类型
+        # norm layer type
         self.norm_layer = norm_layer
-        # 激活层类型
+        # activation layer type
         self.act_layer = act_layer
 
         if self.inflate:
@@ -92,7 +92,7 @@ class Bottleneck3d(nn.Module):
         self.conv2 = conv_layer(planes,
                                 planes,
                                 kernel_size=conv2_kernel_size,
-                                # 是否进行空间下采样
+                                # whether to perform spatial downsampling
                                 stride=(1, self.spatial_stride, self.spatial_stride),
                                 padding=conv2_padding,
                                 bias=False)
@@ -110,8 +110,8 @@ class Bottleneck3d(nn.Module):
         self.act = self.act_layer(inplace=True)
         downsample = None
         if self.spatial_stride != 1 or self.inplanes != out_planes:
-            # 下采样
-            # 空间维度或者通道维度
+            # downsampling
+            # in spatial or channel dimension
             downsample = nn.Sequential(
                 conv_layer(inplanes,
                            out_planes,

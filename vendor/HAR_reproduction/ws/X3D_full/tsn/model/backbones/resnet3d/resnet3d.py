@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/11/2 下午7:24
+@date: 2020/11/2 7:24 PM
 @file: resnet3d.py
 @author: zj
 @description: 
@@ -16,55 +16,55 @@ from .basic_block3d import BasicBlock3d
 class ResNet3d(nn.Module):
 
     def __init__(self,
-                 # 输入通道数
+                 # number of input channels
                  in_channels=3,
-                 # Stem通道数
+                 # number of stem channels
                  base_channel=64,
-                 # 第一个卷积层kernel_size
+                 # kernel_size of the first conv layer
                  conv1_kernel=(1, 7, 7),
-                 # 第一个卷积层步长
+                 # stride of the first conv layer
                  conv1_stride=(2, 2, 2),
-                 # 第一个卷积层零填充
+                 # zero padding of the first conv layer
                  conv1_padding=(0, 3, 3),
-                 # 是否使用第一个池化层
+                 # whether to use the first pooling layer
                  with_pool1=True,
-                 # 第一个池化层kernel_size
+                 # kernel_size of the first pooling layer
                  pool1_kernel=(3, 3, 3),
-                 # 第一个池化层步长
+                 # stride of the first pooling layer
                  pool1_stride=(2, 2, 2),
-                 # 是否使用第二个池化层
+                 # whether to use the second pooling layer
                  with_pool2=True,
-                 # 第二个池化层kernel_size
+                 # kernel_size of the second pooling layer
                  pool2_kernel=(3, 1, 1),
-                 # 第二个池化层步长
+                 # stride of the second pooling layer
                  pool2_stride=(2, 1, 1),
-                 # 各层块个数，以R50为例
+                 # number of blocks per stage, e.g. R50
                  stage_blocks=(3, 4, 6, 3),
-                 # 各层Block第一个卷积层的输出通道数
+                 # output channels of the first conv layer in each stage
                  res_planes=None,
-                 # 膨胀系数，以Bottleneck为例
+                 # expansion factor, e.g. Bottleneck
                  expansion=4,
-                 # 空间步长
+                 # spatial stride
                  spatial_strides=(1, 2, 2, 2),
-                 # 是否进行膨胀
+                 # whether to inflate
                  inflates=(0, 0, 0, 0),
-                 # 膨胀类型
+                 # inflation type
                  inflate_style='3x1x1',
-                 # 卷积层类型
+                 # conv layer type
                  conv_layer=None,
-                 # 池化层类型
+                 # pooling layer type
                  pool_layer=None,
-                 # 归一化层类型
+                 # norm layer type
                  norm_layer=None,
-                 # 激活层类型
+                 # activation layer type
                  act_layer=None,
-                 # 块类型
+                 # block type
                  block_layer=None,
-                 # 是否进行残差分支零初始化
+                 # whether to zero-init the residual branch
                  zero_init_residual=True,
-                 # 是否加载预训练模型
+                 # whether to load a pretrained model
                  state_dict_2d=None,
-                 # 是否进行partialBN
+                 # whether to apply partial BN
                  partial_bn=False
                  ):
         super(ResNet3d, self).__init__()
@@ -81,55 +81,55 @@ class ResNet3d(nn.Module):
         if block_layer is None:
             block_layer = Bottleneck3d
 
-        # 输入通道数
+        # number of input channels
         self.in_channels = in_channels
-        # Stem通道数
+        # number of stem channels
         self.base_channel = base_channel
-        # 第一个卷积层kernel_size
+        # kernel_size of the first conv layer
         self.conv1_kernel = conv1_kernel
-        # 第一个卷积层步长
+        # stride of the first conv layer
         self.conv1_stride = conv1_stride
-        # 是否使用第一个池化层
+        # whether to use the first pooling layer
         self.with_pool1 = with_pool1
-        # 第一个池化层kernel_size
+        # kernel_size of the first pooling layer
         self.pool1_kernel = pool1_kernel
-        # 第一个池化层步长
+        # stride of the first pooling layer
         self.pool1_stride = pool1_stride
-        # 第一个卷积层零填充
+        # zero padding of the first conv layer
         self.conv1_padding = conv1_padding
-        # 是否使用第二个池化层
+        # whether to use the second pooling layer
         self.with_pool2 = with_pool2
-        # 第二个池化层kernel_size
+        # kernel_size of the second pooling layer
         self.pool2_kernel = pool2_kernel
-        # 第二个池化层步长
+        # stride of the second pooling layer
         self.pool2_stride = pool2_stride
-        # 各层块个数，以R50为例
+        # number of blocks per stage, e.g. R50
         self.stage_blocks = stage_blocks
-        # 各层Block第一个卷积层的输出通道数
+        # output channels of the first conv layer in each stage
         self.res_planes = res_planes
-        # 膨胀系数，以Bottleneck为例
+        # expansion factor, e.g. Bottleneck
         self.expansion = expansion
-        # 空间步长
+        # spatial stride
         self.spatial_strides = spatial_strides
-        # 是否进行膨胀
+        # whether to inflate
         self.inflates = inflates
-        # 膨胀类型
+        # inflation type
         self.inflate_style = inflate_style
-        # 卷积层类型
+        # conv layer type
         self.conv_layer = conv_layer
-        # 池化层类型
+        # pooling layer type
         self.pool_layer = pool_layer
-        # 归一化层类型
+        # norm layer type
         self.norm_layer = norm_layer
-        # 激活层类型
+        # activation layer type
         self.act_layer = act_layer
-        # 块类型
+        # block type
         self.block_layer = block_layer
-        # 是否进行残差分支零初始化
+        # whether to zero-init the residual branch
         self.zero_init_residual = zero_init_residual
-        # 是否加载预训练模型
+        # whether to load a pretrained model
         self.state_dict_2d = state_dict_2d
-        # 是否进行partialBN
+        # whether to apply partial BN
         self.partial_bn = partial_bn
 
         self._make_stem_layer()
@@ -181,27 +181,27 @@ class ResNet3d(nn.Module):
                                          ceil_mode=True)
 
     def _make_res_layer(self,
-                        # 输入通道数
+                        # number of input channels
                         inplanes,
-                        # 第一个卷积层的输出通道数
+                        # output channels of the first conv layer
                         planes,
-                        # 卷积层类型
+                        # conv layer type
                         conv_layer,
-                        # 归一化层类型
+                        # norm layer type
                         norm_layer,
-                        # 激活层类型
+                        # activation layer type
                         act_layer,
-                        # 块类型
+                        # block type
                         block_layer,
-                        # 块个数
+                        # number of blocks
                         block_num,
-                        # 膨胀系数
+                        # expansion factor
                         expansion,
-                        # 空间步长，第一个block是否进行下采样
+                        # spatial stride; whether the first block downsamples
                         spatial_stride,
-                        # 是否膨胀时间维度
+                        # whether to inflate the temporal dimension
                         inflate,
-                        # 膨胀类型
+                        # inflation type
                         inflate_style
                         ):
         inflate = inflate if not isinstance(inflate, int) else (inflate,) * block_num

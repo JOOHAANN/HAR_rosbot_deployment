@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/9/10 下午7:38
+@date: 2020/9/10 7:38 PM
 @file: tsn_head.py
 @author: zj
 @description: 

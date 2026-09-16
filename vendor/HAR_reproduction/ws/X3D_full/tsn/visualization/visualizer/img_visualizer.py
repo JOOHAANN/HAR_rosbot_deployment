@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/10/22 上午9:24
+@date: 2020/10/22 9:24 AM
 @file: img_visualizer.py
 @author: zj
 @description: 

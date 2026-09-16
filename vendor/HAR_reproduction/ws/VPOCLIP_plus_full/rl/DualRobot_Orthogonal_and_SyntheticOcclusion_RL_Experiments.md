@@ -1,57 +1,57 @@
-# 两阶段实验计划：双机器人几何协同 + 虚拟遮挡强化学习
+# Two-Stage Experiment Plan: Dual-Robot Geometric Coordination + Synthetic-Occlusion Reinforcement Learning
 
-## 总体顺序
+## Overall Sequence
 
-严格按照下面顺序执行，不要并行推进，也不要在第一阶段结果未完成时自动开始第二阶段的大规模 RL：
+Execute strictly in the order below. Do not proceed in parallel, and do not automatically start large-scale RL for Stage 2 before Stage 1 results are complete:
 
 ```text
 Experiment 1
-双机器人 / 双视角几何协同
-Preferred Orthogonal（非学习）
+Dual-robot / dual-view geometric coordination
+Preferred Orthogonal (non-learning)
         ↓
-完成 equal-budget benchmark + bootstrap
+Complete equal-budget benchmark + bootstrap
         ↓
 Experiment 2
 2D View-Consistent Synthetic Occlusion
         ↓
-先做 active-view diagnostic
+Run active-view diagnostic first
         ↓
-只有 diagnostic 成功后
+Only after the diagnostic succeeds
         ↓
-训练 RL
+Train RL
 ```
 
-两个实验回答不同问题：
+The two experiments answer different questions:
 
-- **Experiment 1**：在原始 ETRI、几乎无遮挡的条件下，简单的 class-agnostic 几何互补双视角是否已经足够有效？
-- **Experiment 2**：如果人为加入具有视角一致性的遮挡，使“移动”真正改变可观测性，RL 是否终于能够学习出有意义的避障/绕遮挡视角策略？
+- **Experiment 1**: Under the original ETRI with almost no occlusion, is a simple class-agnostic geometrically complementary dual view already effective enough?
+- **Experiment 2**: If view-consistent occlusion is artificially introduced so that "moving" genuinely changes observability, can RL finally learn a meaningful occlusion-avoidance / occlusion-bypass viewpoint strategy?
 
 ---
 
 # Experiment 1 — Dual-Robot Preferred Orthogonal Cooperative Perception
 
-## 1. 实验目标
+## 1. Experiment Objectives
 
-使用 ETRI 同步多视角数据离线模拟两台机器人：
+Use ETRI synchronized multi-view data to simulate two robots offline:
 
 ```text
 Robot A:
-先确定观察位置，作为 anchor robot
+Determine the observation position first, as the anchor robot
 
 Robot B:
-根据 Robot A 与人体的相对观察方向
-使用 Preferred Orthogonal 几何规则
-选择最互补的第二观察位置
+Based on the relative viewing direction between Robot A and the human
+Use the Preferred Orthogonal geometric rule
+Select the most complementary second observation position
 
 Robot A + Robot B:
-同时观察同一 temporal window
-同时进行 HAR
-最后做双视角融合
+Simultaneously observe the same temporal window
+Run HAR simultaneously
+Finally perform dual-view fusion
 ```
 
-本实验的主动布位算法 **不使用 RL，不训练 viewpoint policy**。
+The active placement algorithm in this experiment **does not use RL and does not train a viewpoint policy**.
 
-主动选位部分属于：
+The active viewpoint selection part is:
 
 ```text
 class-agnostic
@@ -60,13 +60,13 @@ geometry-based
 non-learning viewpoint coordination
 ```
 
-VPOCLIP 识别器仍然是 learning-based。
+The VPOCLIP recognizer remains learning-based.
 
 ---
 
-## 2. 重要科学问题
+## 2. Key Scientific Questions
 
-必须区分两个不同收益：
+Two distinct gains must be separated:
 
 ### Extra-sensor gain
 
@@ -76,7 +76,7 @@ Dual-Robot Random Pair
 Single-Robot Fixed
 ```
 
-这个收益主要来自“多一个相机/机器人”。
+This gain mainly comes from "having one more camera/robot".
 
 ### Coordination gain
 
@@ -86,15 +86,15 @@ Preferred Orthogonal Pair
 Dual-Robot Random Pair
 ```
 
-这个才是几何协同算法本身的贡献。
+This is the contribution of the geometric coordination algorithm itself.
 
-最终报告中不能只强调：
+The final report must not only emphasize:
 
 ```text
 Ours - Single Fixed
 ```
 
-必须同时报告：
+The following must also be reported:
 
 ```text
 Ours - Random Pair
@@ -103,9 +103,9 @@ Ours - Fixed Pair
 
 ---
 
-## 3. 数据与协议
+## 3. Data and Protocol
 
-保持当前已有 protocol：
+Keep the existing protocol:
 
 ```text
 Seen train
@@ -113,16 +113,16 @@ Seen validation / subject-held-out validation
 Strict true unseen test
 ```
 
-当前 true unseen：
+Current true unseen:
 
 ```text
 [0, 2, 26, 34, 50]
 ```
 
-重要：
+Important:
 
 ```text
-禁止使用 true unseen 调：
+It is forbidden to tune on true unseen:
 - camera angle
 - orthogonal target angle
 - fusion weight
@@ -131,39 +131,39 @@ Strict true unseen test
 - model checkpoint
 ```
 
-true unseen 只用于最终 locked evaluation。
+True unseen is used only for the final locked evaluation.
 
 ---
 
-## 4. ETRI 双机器人离线模拟的含义
+## 4. Meaning of the ETRI Dual-Robot Offline Simulation
 
-ETRI 原始数据是固定多相机同步采集，因此这里不要在论文/报告中声称已经进行了真实双机器人运动实验。
+ETRI raw data is recorded by fixed synchronized multi-camera capture, so do not claim in the paper/report that real dual-robot motion experiments have already been performed.
 
-当前阶段准确称为：
+The current stage should accurately be called:
 
 ```text
 dual-robot sensing proxy
-或
+or
 dual-agent synchronized multi-view simulation using ETRI cameras
 ```
 
-每一个 ETRI camera view 代表机器人可到达的离散观察位置。
+Each ETRI camera view represents a discrete observation position reachable by a robot.
 
-如果以后有真实机器人，再做 physical deployment validation。
+If real robots become available later, perform physical deployment validation.
 
 ---
 
-## 5. Camera Relative Angle 配置
+## 5. Camera Relative Angle Configuration
 
-ETRI 如果没有 camera calibration，不要伪造 intrinsic/extrinsic。
+If ETRI has no camera calibration, do not fabricate intrinsics/extrinsics.
 
-建立一个配置文件：
+Create a configuration file:
 
 ```text
 camera_view_angles.yaml
 ```
 
-例如：
+For example:
 
 ```yaml
 view0: 0
@@ -172,67 +172,67 @@ view2: 180
 view3: 270
 ```
 
-但这里的具体映射必须根据：
+But the specific mapping here must be determined based on:
 
 ```text
 ETRI camera ordering
-已有 metadata
-人工快速检查几个同步样本
+Existing metadata
+Manual quick inspection of a few synchronized samples
 ```
 
-确定。
+Determine it from these sources.
 
-如果只能知道离散环绕顺序，也可以使用：
+If only the discrete surround order is known, the following may also be used:
 
 ```text
 0 / 90 / 180 / 270
 ```
 
-作为 pseudo-angle。
+as pseudo-angles.
 
-报告中明确称为：
+In the report, explicitly call it:
 
 ```text
 relative camera-view angle
 ```
 
-不要称为 calibrated world pose。
+Do not call it a calibrated world pose.
 
 ---
 
 ## 6. Robot A — Anchor Placement
 
-主实验为了和之前结果公平比较：
+For fair comparison with previous results, the main experiment uses:
 
 ```text
 Robot A = fixed View0
 ```
 
-额外做 robustness：
+Additionally, run robustness tests:
 
 ```text
 Robot A = random valid anchor
 ```
 
-但主表优先固定 View0。
+But the main table should prioritize fixed View0.
 
 ---
 
 ## 7. Robot B — Preferred Orthogonal
 
-设 Robot A 相对人体方向：
+Let the direction of Robot A relative to the human be:
 
 \[
 \theta_A
 \]
 
-候选 Robot B 位置：
+Candidate Robot B positions:
 
 \[
 \theta_j
 \]
 
-计算 circular angular separation：
+Compute the circular angular separation:
 
 \[
 \Delta\theta_j
@@ -243,7 +243,7 @@ Robot A = random valid anchor
 )
 \]
 
-Preferred Orthogonal 选择：
+The Preferred Orthogonal selection:
 
 \[
 j^*
@@ -252,23 +252,23 @@ j^*
 |\Delta\theta_j-\theta^*|
 \]
 
-默认：
+Default:
 
 \[
 \theta^*=90^\circ
 \]
 
-如果多个 candidate 并列：
+If multiple candidates tie:
 
-1. 优先 movement cost 小的；
-2. 如果没有 movement cost，使用固定 deterministic tie-break；
-3. 不允许查看 HAR GT 或 future candidate logits 来 tie-break。
+1. Prefer the one with lower movement cost;
+2. If no movement cost is available, use a fixed deterministic tie-break;
+3. It is not allowed to inspect HAR GT or future candidate logits for tie-breaking.
 
 ---
 
-## 8. 可选几何版本
+## 8. Optional Geometric Variants
 
-只做小规模 ablation，不要过度搜索：
+Run only a small-scale ablation; do not over-search:
 
 ```text
 Target angle:
@@ -277,23 +277,23 @@ Target angle:
 120°
 ```
 
-参数只能在 validation 上选择。
+Parameters may only be selected on validation.
 
-主方法优先保持：
+The main method should prefer to keep:
 
 ```text
 90° Preferred Orthogonal
 ```
 
-以保持方法简单和可解释。
+to keep the method simple and interpretable.
 
 ---
 
-## 9. 双视角 HAR Fusion
+## 9. Dual-View HAR Fusion
 
-为了单独测“布位”贡献，第一版 fusion 不要复杂化。
+To isolate the contribution of "placement" alone, do not over-complicate the first version of fusion.
 
-主 baseline：
+Main baseline:
 
 \[
 z_{fused}
@@ -301,29 +301,29 @@ z_{fused}
 \frac{z_A+z_B}{2}
 \]
 
-其中：
+where:
 
 ```text
 z_A = Robot A logits
 z_B = Robot B logits
 ```
 
-额外可测试：
+Optionally test:
 
 ```text
 max confidence fusion
 weighted logits fusion
 ```
 
-但 fusion 参数不能用 true unseen 调。
+But fusion parameters must not be tuned on true unseen.
 
-暂时不要引入新的大型 cross-view network，否则无法判断收益来自布位还是 fusion。
+For now, do not introduce a new large cross-view network; otherwise it is impossible to tell whether the gains come from placement or fusion.
 
 ---
 
-## 10. Experiment 1 必须比较的 Baselines
+## 10. Baselines That Experiment 1 Must Compare
 
-至少包含：
+Must include at least:
 
 ### 1. Single-Robot Fixed
 
@@ -334,25 +334,25 @@ Robot A at View0
 
 ### 2. Single-Robot Random-2
 
-模拟单机器人：
+Simulate a single robot:
 
 ```text
 View0
 +
-随机第二视角
+A random second view
 ```
 
-用于和之前 Random-2 结果对齐。
+Used to align with previous Random-2 results.
 
 ### 3. Dual-Robot Fixed Pair
 
-固定两个 camera pair，例如：
+Fix a camera pair, for example:
 
 ```text
 View0 + predefined View1
 ```
 
-用于判断“固定双机”本身的收益。
+Used to measure the gain of a "fixed dual-robot" setup by itself.
 
 ### 4. Dual-Robot Random Pair
 
@@ -361,39 +361,39 @@ Robot A = View0
 Robot B = random legal candidate
 ```
 
-这是最重要的 equal-budget baseline。
+This is the most important equal-budget baseline.
 
 ### 5. Dual-Robot Maximum Separation
 
-选择与 Robot A 角度差最大的 view。
+Select the view with the largest angular difference from Robot A.
 
-用于区分：
+Used to distinguish:
 
 ```text
 90° complementary
 vs
-单纯越远越好
+simply farther is better
 ```
 
 ### 6. Dual-Robot Preferred Orthogonal
 
-本实验 proposed method。
+The proposed method of this experiment.
 
 ### 7. All Valid Views
 
-全部 view 融合。
+Fuse all views.
 
 ### 8. Oracle-2
 
-利用 GT 离线选择最优第二视角。
+Use GT to offline-select the optimal second view.
 
-只能作为 upper bound。
+Can only serve as an upper bound.
 
 ---
 
-## 11. Experiment 1 主结果表
+## 11. Experiment 1 Main Results Table
 
-Codex 最终必须生成：
+Codex must finally generate:
 
 | Method | # Views | Seen Top-1 | True Unseen Top-1 | Δ vs Single Fixed | Δ vs Random Pair | 95% CI vs Random Pair |
 |---|---:|---:|---:|---:|---:|---:|
@@ -408,9 +408,9 @@ Codex 最终必须生成：
 
 ---
 
-## 12. Experiment 1 统计测试
+## 12. Experiment 1 Statistical Tests
 
-对：
+For:
 
 ```text
 Preferred Orthogonal
@@ -418,20 +418,20 @@ vs
 Dual Random Pair
 ```
 
-必须做 paired bootstrap：
+A paired bootstrap is required:
 
 ```text
 >= 5000 bootstrap samples
 ```
 
-报告：
+Report:
 
 ```text
 accuracy difference
 95% CI
 ```
 
-同时做：
+Also run:
 
 ```text
 Preferred Orthogonal
@@ -443,7 +443,7 @@ Dual Fixed Pair
 
 ## 13. Per-Class Analysis
 
-true unseen `[0,2,26,34,50]` 分类别报告：
+Report per class on true unseen `[0,2,26,34,50]`:
 
 ```text
 Single Fixed
@@ -452,7 +452,7 @@ Preferred Orthogonal
 Oracle-2
 ```
 
-防止总体提升完全由单一 action class 驱动。
+This prevents the overall improvement from being driven entirely by a single action class.
 
 ---
 
@@ -460,37 +460,37 @@ Oracle-2
 
 ### Positive result
 
-如果出现：
+If the following appears:
 
 ```text
 Preferred Orthogonal > Random Pair
 ```
 
-且：
+And:
 
 ```text
-多个 split / class 中大多数为正
-CI 明显向正方向移动
+Most splits / classes are positive
+The CI shifts clearly in the positive direction
 ```
 
-则 geometry-based dual-robot coordination 值得继续作为主方法。
+then geometry-based dual-robot coordination is worth continuing as the main method.
 
 ### Weak but useful result
 
-如果：
+If:
 
 ```text
-Preferred Orthogonal 仅比 Random Pair 高 0.5~1 pp
+Preferred Orthogonal is only 0.5~1 pp above Random Pair
 ```
 
-但：
+but:
 
 ```text
-稳定
-并且 movement / placement cost 更低
+stable
+and lower movement / placement cost
 ```
 
-仍然保留，论文重点转向：
+keep it anyway, and shift the paper's focus to:
 
 ```text
 accuracy-cost tradeoff
@@ -498,27 +498,27 @@ accuracy-cost tradeoff
 
 ### Negative result
 
-如果：
+If:
 
 ```text
 Preferred Orthogonal ~= Random Pair
 ```
 
-且所有 split 都无稳定优势，则不要包装成“学习成功”。
+and there is no stable advantage on any split, do not package it as a "learning success".
 
-继续执行 Experiment 2，验证是否是原始 ETRI 缺乏 active-perception pressure。
+Proceed to Experiment 2 to verify whether the original ETRI lacks active-perception pressure.
 
 ---
 
 # Experiment 2 — View-Consistent Synthetic Occlusion + RL
 
-## 15. 实验目标
+## 15. Experiment Objectives
 
-验证下面假设：
+Verify the following hypothesis:
 
-> ETRI 原始环境为了清晰观察老人行为，遮挡较少，因此不同 viewpoint 之间的 action value 差异不足，导致之前的 RL / NBV / VoI 方法难以学到有效移动策略。
+> The original ETRI environment has little occlusion (to clearly observe elderly behavior), so the action-value differences between viewpoints are insufficient, causing previous RL / NBV / VoI methods to struggle to learn effective movement policies.
 
-本实验人为生成：
+This experiment artificially generates:
 
 ```text
 view-dependent
@@ -526,15 +526,15 @@ multi-view consistent
 human-centric synthetic occlusion
 ```
 
-使：
+such that:
 
 ```text
-某些视角被遮挡
-侧向移动后遮挡减少
-相反方向移动后遮挡增加
+Some views are occluded
+Lateral movement reduces the occlusion
+Movement in the opposite direction increases the occlusion
 ```
 
-然后重新检查：
+Then re-examine:
 
 ```text
 Oracle gap
@@ -545,17 +545,17 @@ RL performance
 
 ---
 
-# 16. 本实验不要直接做 3D calibration
+# 16. Do Not Perform 3D Calibration Directly in This Experiment
 
-当前 ETRI 如果没有 camera intrinsic/extrinsic：
+If the current ETRI data lacks camera intrinsics/extrinsics:
 
 ```text
-不要尝试伪造 calibration
-不要先做 3D reconstruction
-不要先上 NeRF / Gaussian Splatting
+Do not attempt to fabricate calibration
+Do not start with 3D reconstruction
+Do not start with NeRF / Gaussian Splatting
 ```
 
-第一版使用：
+The first version uses:
 
 ```text
 2D top-down pseudo-world
@@ -569,13 +569,13 @@ virtual occluder
 
 # 17. Top-Down Pseudo-World
 
-定义人体中心：
+Define the human center:
 
 \[
 H=(0,0)
 \]
 
-四个 camera：
+Four cameras:
 
 \[
 C_i=
@@ -585,17 +585,17 @@ R[
 ]
 \]
 
-其中：
+where:
 
 ```text
 theta_i
 ```
 
-来自 Experiment 1 的 `camera_view_angles.yaml`。
+comes from the `camera_view_angles.yaml` of Experiment 1.
 
-不需要真实米制位置。
+Real metric positions are not needed.
 
-例如：
+For example:
 
 ```text
 Human = origin
@@ -606,7 +606,7 @@ Camera radius R = 1.0
 
 # 18. Virtual Occluder
 
-每个 synchronized multi-view clip 只采样一次：
+Sample only once per synchronized multi-view clip:
 
 ```text
 occluder_angle
@@ -616,9 +616,9 @@ severity
 target_region
 ```
 
-然后整个 clip 固定。
+Then keep it fixed for the entire clip.
 
-示例：
+Example:
 
 ```text
 occluder_angle = -30°
@@ -627,29 +627,29 @@ severity = medium
 target_region = upper_body
 ```
 
-相同 sample 的所有 view 必须共享同一个 virtual occluder。
+All views of the same sample must share the same virtual occluder.
 
-禁止每个 view 独立随机 mask。
+Independent random masks per view are forbidden.
 
 ---
 
-# 19. 计算 View-Dependent Occlusion
+# 19. Computing View-Dependent Occlusion
 
-第一版可以使用 line-of-sight distance。
+The first version may use line-of-sight distance.
 
-对于 camera \(C_i\) 到人体 \(H\) 的视线段：
+For the line-of-sight segment from camera \(C_i\) to the human \(H\):
 
 \[
 L_i=C_i\rightarrow H
 \]
 
-计算 virtual occluder \(O\) 到该线段的最短距离：
+Compute the shortest distance from the virtual occluder \(O\) to this segment:
 
 \[
 d_i = distance(O,L_i)
 \]
 
-定义 occlusion severity：
+Define the occlusion severity:
 
 \[
 s_i
@@ -661,15 +661,15 @@ s_{max}
 \right)
 \]
 
-同时检查 occluder 是否位于：
+Also check whether the occluder lies between:
 
 ```text
 camera -> human
 ```
 
-之间。
+the camera and the human.
 
-如果不在视线前方：
+If it is not in front of the line of sight:
 
 ```text
 s_i = 0
@@ -677,60 +677,60 @@ s_i = 0
 
 ---
 
-## 20. 遮挡方向
+## 20. Occlusion Direction
 
-使用有符号 lateral distance / 2D cross product 判断：
+Use signed lateral distance / 2D cross product to determine:
 
 ```text
-occluder 在当前 camera 视野中位于人体左边
-或
-位于人体右边
+the occluder is on the left of the human in the current camera view
+or
+on the right
 ```
 
-然后 mask 从对应方向进入 human bbox。
+Then the mask enters the human bbox from the corresponding side.
 
-目标效果：
+Target effect:
 
 ```text
 Front view:
-中/重度遮挡
+moderate/heavy occlusion
 
 Left view:
-更严重
+more severe
 
 Right view:
-轻微或完全消失
+mild or completely gone
 ```
 
-这必须由同一个 virtual occluder 几何产生，而不是硬编码每个 camera 的 mask。
+This must arise from the geometry of the same virtual occluder, not from hard-coded per-camera masks.
 
 ---
 
 # 21. Human-Centric 2D Mask
 
-优先从已有：
+Prefer using existing:
 
 ```text
 person bbox
-或
+or
 2D skeleton
 ```
 
-获得每帧 human bbox：
+to obtain the per-frame human bbox:
 
 ```text
 x1(t), y1(t), x2(t), y2(t)
 ```
 
-如果没有 person bbox：
+If no person bbox is available:
 
 ```text
-从有效 2D keypoints 的 min/max
-生成 bbox
-再扩大 5~10% margin
+Generate the bbox
+from the min/max of valid 2D keypoints
+then expand it by a 5~10% margin
 ```
 
-mask width：
+mask width:
 
 ```text
 mask_width
@@ -738,13 +738,13 @@ mask_width
 severity * human_bbox_width
 ```
 
-mask height 第一版：
+mask height in the first version:
 
 ```text
 0.6 ~ 0.8 * human_bbox_height
 ```
 
-优先遮：
+Prefer occluding:
 
 ```text
 upper body
@@ -752,33 +752,33 @@ hands
 face / torso interaction region
 ```
 
-而不是随机背景。
+rather than random background.
 
 ---
 
 # 22. Temporal Consistency
 
-同一个 clip：
+For the same clip:
 
 ```text
-occluder world parameters 固定
+occluder world parameters fixed
 ```
 
-每帧只根据 person bbox 更新 mask 在 image plane 的位置。
+Per frame, update only the mask position on the image plane based on the person bbox.
 
-为避免 bbox 抖动：
+To avoid bbox jitter:
 
 ```text
-对 bbox center / size 做 EMA smoothing
+Apply EMA smoothing to the bbox center / size
 ```
 
-禁止每帧随机改变 mask。
+Randomly changing the mask per frame is forbidden.
 
 ---
 
 # 23. Mask Appearance
 
-按阶段：
+By stage:
 
 ### Debug
 
@@ -788,29 +788,29 @@ gray rectangle
 
 ### Main synthetic benchmark
 
-推荐：
+Recommended:
 
 ```text
 blurred / textured rectangle
 ```
 
-避免纯黑块造成过强 synthetic artifact。
+Avoid pure black blocks that create an overly strong synthetic artifact.
 
-可以从非人体背景 crop texture 后填充 mask。
+You may crop texture from non-human background and fill the mask with it.
 
-第一轮不要做复杂 object cutout。
+Do not do complex object cutouts in the first round.
 
 ---
 
-# 24. 不要重新编码全部 MP4
+# 24. Do Not Re-encode All MP4s
 
-优先：
+Prefer:
 
 ```text
 on-the-fly masking
 ```
 
-在 Dataset / dataloader 中：
+In the Dataset / dataloader:
 
 ```python
 frames = load_clip(...)
@@ -818,9 +818,9 @@ frames = apply_view_consistent_occlusion(...)
 model_input = preprocess(frames)
 ```
 
-不要默认保存大量新视频。
+Do not save large numbers of new videos by default.
 
-可以只缓存：
+You may cache only:
 
 ```text
 sample_id
@@ -831,13 +831,13 @@ target_region
 random_seed
 ```
 
-确保所有方法使用完全相同 synthetic episode。
+Ensure all methods use exactly the same synthetic episodes.
 
 ---
 
-# 25. 极其重要：避免“无遮挡辅助模态泄漏”
+# 25. Extremely Important: Avoid "Unoccluded Auxiliary-Modality Leakage"
 
-在当前 VPOCLIP pipeline 中检查：
+Check in the current VPOCLIP pipeline:
 
 ```text
 RGB
@@ -845,22 +845,22 @@ Skeleton
 Object
 ```
 
-是否来自原始未遮挡缓存。
+whether they come from the original unoccluded cache.
 
-如果 RGB 被 mask，但 skeleton / object 仍然来自原始 clear video，会形成信息泄漏：
+If RGB is masked but skeleton / object still come from the original clear video, information leakage occurs:
 
 ```text
-视觉上被挡
-但模型仍通过未遮挡 skeleton/object 看见完整人体
+Visually occluded
+but the model still sees the full human through unoccluded skeleton/object
 ```
 
-这是不允许的。
+This is not allowed.
 
-Codex 必须首先检查当前数据流，然后选择下面一种一致实现：
+Codex must first inspect the current data flow, then choose one of the following consistent implementations:
 
 ### Preferred
 
-mask 在所有 feature extraction 之前加入：
+Apply the mask before all feature extraction:
 
 ```text
 masked frame
@@ -868,34 +868,34 @@ masked frame
 -> VPOCLIP
 ```
 
-重新生成受遮挡输入。
+Regenerate the occluded inputs.
 
-### 如果 pose/object 重建成本过高
+### If pose/object reconstruction is too costly
 
-根据 mask region：
+Based on the mask region:
 
 ```text
-落在 mask 内的 keypoints -> missing / zero / invalid
-被 mask 大面积覆盖的 object -> drop / invalid
+keypoints falling inside the mask -> missing / zero / invalid
+objects largely covered by the mask -> drop / invalid
 ```
 
-不能继续使用完整无遮挡 pose/object。
+The complete unoccluded pose/object must not be used.
 
-### 如果做不到一致 corruption
+### If consistent corruption is not feasible
 
-先只运行一个明确标注的：
+First run only an explicitly labeled:
 
 ```text
 RGB-only synthetic occlusion diagnostic
 ```
 
-不要把其结果误称为 full multimodal VPOCLIP result。
+Do not mislabel its results as a full multimodal VPOCLIP result.
 
 ---
 
 # 26. Occlusion Severity Levels
 
-固定四档：
+Use exactly four levels:
 
 ```text
 None
@@ -904,7 +904,7 @@ Medium
 Heavy
 ```
 
-建议初始范围：
+Suggested initial ranges:
 
 ```text
 Mild:
@@ -917,13 +917,13 @@ Heavy:
 50~70%
 ```
 
-具体参数只在 seen validation 上确认。
+Specific parameters must be confirmed only on seen validation.
 
 ---
 
-# 27. RL 之前必须先做 Diagnostic
+# 27. Diagnostic Must Run Before RL
 
-在任何 PPO/RL 训练前，分别对：
+Before any PPO/RL training, for each of:
 
 ```text
 None
@@ -932,7 +932,7 @@ Medium
 Heavy
 ```
 
-计算：
+compute:
 
 ```text
 View0
@@ -942,7 +942,7 @@ Oracle-2
 Recoverable ratio
 ```
 
-主表：
+Main table:
 
 | Occlusion | View0 | Random-2 | Orthogonal-2 | Oracle-2 | Oracle-Random Gap | Recoverable Ratio |
 |---|---:|---:|---:|---:|---:|---:|
@@ -955,46 +955,46 @@ Recoverable ratio
 
 # 28. Active-View Signal Diagnostic
 
-因为 synthetic generator 知道每个 candidate 的实际遮挡程度，可定义：
+Because the synthetic generator knows the actual occlusion level of each candidate, define:
 
 ```text
 least_occluded_candidate
 ```
 
-然后计算：
+Then compute:
 
 ```text
 P(least_occluded_candidate == HAR_best_candidate)
 ```
 
-其中：
+where:
 
 ```text
 HAR_best_candidate
 ```
 
-只用于离线 diagnostic，由 GT utility 确定。
+is used only for the offline diagnostic, determined by GT utility.
 
-如果有 3 个候选，random action agreement 约为：
+With 3 candidates, random action agreement is about:
 
 ```text
 33.3%
 ```
 
-希望 synthetic occlusion 后：
+After synthetic occlusion, we hope that:
 
 ```text
 least-occluded vs HAR-best agreement
-明显 > random
+is clearly > random
 ```
 
-例如达到：
+For example, reaching:
 
 ```text
 50%+
 ```
 
-更理想：
+More ideally:
 
 ```text
 60~80%
@@ -1004,28 +1004,28 @@ least-occluded vs HAR-best agreement
 
 # 29. Experiment 2 RL Go / No-Go Gate
 
-只有同时满足大部分以下条件才开始 RL：
+Start RL only if most of the following conditions are met:
 
 ```text
-1. Oracle-Random gap 相比 None 明显扩大
-2. Recoverable ratio 明显提高
-3. least-occluded candidate 与 HAR-best candidate 的 agreement 明显高于 random
-4. Orthogonal / low-occlusion view 在 synthetic occlusion 下出现稳定优势
+1. The Oracle-Random gap clearly widens compared to None
+2. The recoverable ratio clearly increases
+3. The agreement between the least-occluded candidate and the HAR-best candidate is clearly higher than random
+4. The Orthogonal / low-occlusion view shows a stable advantage under synthetic occlusion
 ```
 
-如果这些都没出现：
+If none of these appear:
 
 ```text
-不要训练 PPO
+Do not train PPO
 ```
 
-说明 synthetic mask 没有创造出合理 active-view pressure，应先修改遮挡生成器。
+This means the synthetic mask did not create reasonable active-view pressure; fix the occlusion generator first.
 
 ---
 
 # 30. RL Problem Formulation
 
-如果 diagnostic 通过，构造真正 sequential RL。
+If the diagnostic passes, construct a truly sequential RL problem.
 
 ### Episode
 
@@ -1040,19 +1040,19 @@ optionally move again
 STOP
 ```
 
-最多：
+At most:
 
 ```text
 2 moves
 ```
 
-第一版不要无限 horizon。
+Do not use an infinite horizon in the first version.
 
 ---
 
 # 31. RL State
 
-只允许使用当前/历史已经观察到的信息：
+Only information already observed currently or historically is allowed:
 
 ```text
 current VPOCLIP feature / logits
@@ -1070,19 +1070,19 @@ number of views used
 movement cost
 ```
 
-注意：
+Note:
 
 ```text
 current observed occlusion ratio / side
 ```
 
-可以从当前 synthetic mask 或当前 image-derived mask 计算，因此是 causal observable information。
+can be computed from the current synthetic mask or the current image-derived mask, so it is causally observable information.
 
 ---
 
-# 32. RL 严禁输入
+# 32. Inputs Strictly Forbidden for RL
 
-禁止：
+Forbidden:
 
 ```text
 GT action label
@@ -1098,17 +1098,17 @@ latent occluder_position
 HAR Oracle action
 ```
 
-特别注意：
+Special attention:
 
-**不能直接把 synthetic generator 的隐藏 occluder_angle 给 policy。**
+**The hidden occluder_angle of the synthetic generator must not be given directly to the policy.**
 
-否则 policy 是在读取模拟器真值，不是真正 active vision。
+Otherwise the policy is reading simulator ground truth, not performing true active vision.
 
 ---
 
 # 33. RL Action
 
-四视角数据中：
+With four-view data:
 
 ```text
 STOP
@@ -1118,23 +1118,23 @@ move_to_view2
 move_to_view3
 ```
 
-已经访问的 view：
+Already-visited views:
 
 ```text
 mask as illegal
 ```
 
-当前所在 view：
+The current view:
 
 ```text
-不能原地重复选择
+Cannot be re-selected in place
 ```
 
 ---
 
 # 34. RL Reward
 
-推荐第一版：
+Recommended for the first version:
 
 \[
 r_t
@@ -1148,11 +1148,11 @@ r_t
 \mu C_{view}
 \]
 
-其中：
+where:
 
 ### HAR evidence gain
 
-训练 seen class 时：
+When training on seen classes:
 
 \[
 \Delta HAR_t
@@ -1162,11 +1162,11 @@ Margin_{t+1}^{GT}
 Margin_t^{GT}
 \]
 
-只用于 reward，不作为 state。
+Used only for reward, not as state.
 
 ### Observable quality gain
 
-可以使用：
+May use:
 
 \[
 \Delta Obs
@@ -1174,11 +1174,11 @@ Margin_t^{GT}
 Occ_t-Occ_{t+1}
 \]
 
-即遮挡减少。
+i.e., occlusion reduction.
 
-但不要让 visibility reward 完全主导。
+But do not let the visibility reward completely dominate.
 
-建议从：
+Suggested starting values:
 
 ```text
 alpha = 1.0
@@ -1187,65 +1187,65 @@ lambda = 0.05
 mu = 0.02
 ```
 
-这类量级开始，再在 validation 上有限调整。
+Start from this magnitude, then adjust within a limited range on validation.
 
-不要在 true unseen 调 reward。
+Do not tune the reward on true unseen.
 
 ---
 
 # 35. Terminal Reward
 
-STOP 后：
+After STOP:
 
 ```text
 correct final HAR:
 + positive reward
 
 incorrect:
-0 或 small negative
+0 or small negative
 ```
 
-第一版保持简单。
+Keep the first version simple.
 
 ---
 
 # 36. RL Algorithm
 
-如果现有项目已经有 PPO infrastructure：
+If the existing project already has PPO infrastructure:
 
 ```text
-优先继续 PPO
+Prefer to continue with PPO
 ```
 
-但从小网络开始：
+But start with a small network:
 
 ```text
 MLP 64-64
 ```
 
-然后最多比较：
+Then compare at most:
 
 ```text
 128-128
 ```
 
-不要直接上大 Transformer。
+Do not jump directly to a large Transformer.
 
-当前 experiment 的目标是验证：
+The goal of the current experiment is to verify:
 
 ```text
-遮挡使 active movement 变得可学习
+occlusion makes active movement learnable
 ```
 
-不是证明大网络更强。
+not to prove that a larger network is stronger.
 
 ---
 
 # 37. RL Training Data
 
-只在 seen classes 上训练。
+Train only on seen classes.
 
-Synthetic occluder 每个 epoch / episode 随机采样：
+Randomly sample the synthetic occluder per epoch / episode:
 
 ```text
 direction
@@ -1254,9 +1254,9 @@ severity
 target region
 ```
 
-形成 domain randomization。
+This forms domain randomization.
 
-训练时混合：
+Mix during training:
 
 ```text
 None
@@ -1265,7 +1265,7 @@ Medium
 Heavy
 ```
 
-例如：
+For example:
 
 ```text
 10% None
@@ -1274,41 +1274,41 @@ Heavy
 25% Heavy
 ```
 
-具体比例只能在 validation 调。
+The specific proportions may only be tuned on validation.
 
 ---
 
-# 38. 防止 RL 学 camera ID shortcut
+# 38. Prevent RL from Learning a Camera-ID Shortcut
 
-必须：
-
-```text
-随机 start view
-随机 occluder direction
-随机 severity
-随机 subject/sample order
-```
-
-不要总是：
+Must:
 
 ```text
-View0 被挡
-View2 最清楚
+random start view
+random occluder direction
+random severity
+random subject/sample order
 ```
 
-否则 policy 只会记：
+Do not always have:
+
+```text
+View0 occluded
+View2 clearest
+```
+
+Otherwise the policy will only memorize:
 
 ```text
 View0 -> View2
 ```
 
-而不是学“避开遮挡”。
+instead of learning to "avoid occlusion".
 
 ---
 
 # 39. RL Baselines
 
-Synthetic occlusion 下至少比较：
+Under synthetic occlusion, compare at least:
 
 ```text
 Fixed View
@@ -1321,20 +1321,20 @@ Oracle
 
 ### Greedy Current-Visibility heuristic
 
-只能根据当前 observation：
+May only use the current observation:
 
 ```text
 mask side
 camera geometry
 ```
 
-使用简单规则选择侧向移动。
+Use a simple rule to choose a lateral move.
 
-这是很重要的 baseline，用于判断 RL 是否真的优于 hand-designed avoidance。
+This is an important baseline for judging whether RL truly outperforms hand-designed avoidance.
 
 ---
 
-# 40. RL 主结果表
+# 40. RL Main Results Table
 
 | Occlusion | Fixed | Random | Orthogonal | Visibility Heuristic | RL | Oracle |
 |---|---:|---:|---:|---:|---:|---:|
@@ -1343,7 +1343,7 @@ camera geometry
 | Medium | | | | | | |
 | Heavy | | | | | | |
 
-同时报告：
+Also report:
 
 ```text
 average views
@@ -1354,37 +1354,37 @@ recoverable success rate
 
 ---
 
-# 41. True Unseen 测试
+# 41. True Unseen Testing
 
-最终在 locked true unseen：
+Finally, on locked true unseen:
 
 ```text
 [0,2,26,34,50]
 ```
 
-上测试 synthetic occlusion transfer。
+test synthetic-occlusion transfer.
 
-重要：
+Important:
 
 ```text
-相同 sample
-相同 occluder seed
-相同 severity
+Same samples
+Same occluder seed
+Same severity
 ```
 
-所有方法必须 paired evaluation。
+All methods must undergo paired evaluation.
 
 ---
 
-# 42. RL 成功判据
+# 42. RL Success Criteria
 
-理想结果不是只看：
+The ideal result is not judged only on:
 
 ```text
 RL > Fixed
 ```
 
-而是：
+but on:
 
 ```text
 RL > Random
@@ -1392,29 +1392,29 @@ RL > Preferred Orthogonal
 RL > simple visibility heuristic
 ```
 
-尤其是在：
+Especially under:
 
 ```text
 Medium
 Heavy
 ```
 
-遮挡下。
+occlusion.
 
-如果：
+If:
 
 ```text
-RL 只比 Fixed 高
-但 ~= Random / heuristic
+RL is only higher than Fixed
+but ~= Random / heuristic
 ```
 
-则不能声称 RL 学到了有效主动视角策略。
+then one cannot claim that RL learned an effective active-viewpoint policy.
 
 ---
 
-# 43. 两个 Experiment 的最终联合表
+# 43. Final Joint Table for Both Experiments
 
-最后生成一个总表：
+Finally, generate a summary table:
 
 | Setting | Method | True Unseen Top-1 | Δ vs Equal-Budget Random | Avg Views | Notes |
 |---|---|---:|---:|---:|---|
@@ -1430,78 +1430,78 @@ RL 只比 Fixed 高
 
 ---
 
-# 44. Codex 最终必须回答的科学问题
+# 44. Scientific Questions Codex Must Finally Answer
 
-Experiment 1：
+Experiment 1:
 
 ```text
-1. 双机器人同步双视角相对单机器人提升多少？
-2. 其中多少是“多一个 sensor”的收益？
-3. Preferred Orthogonal 相对 equal-budget Random Pair 到底提升多少？
-4. 这个提升是否跨 unseen classes 稳定？
+1. How much does dual-robot synchronized dual-view improve over a single robot?
+2. How much of that gain comes from "one more sensor"?
+3. How much does Preferred Orthogonal actually improve over the equal-budget Random Pair?
+4. Is this improvement stable across unseen classes?
 ```
 
-Experiment 2：
+Experiment 2:
 
 ```text
-1. View-consistent synthetic occlusion 是否扩大 Oracle-Random gap？
-2. Recoverable ratio 是否随着遮挡增加？
-3. 遮挡较少的 candidate 是否更可能成为 HAR-best candidate？
-4. RL 是否学会朝减小遮挡的方向移动？
-5. RL 是否在 true unseen action 上超过 Random / Orthogonal / heuristic？
-6. 原始 ETRI 中 RL 失败是否可以部分解释为 active-perception pressure 不足？
+1. Does view-consistent synthetic occlusion widen the Oracle-Random gap?
+2. Does the recoverable ratio increase with occlusion?
+3. Are less-occluded candidates more likely to be the HAR-best candidate?
+4. Does RL learn to move in directions that reduce occlusion?
+5. Does RL outperform Random / Orthogonal / heuristic on true unseen actions?
+6. Can the failure of RL in the original ETRI be partly explained by insufficient active-perception pressure?
 ```
 
 ---
 
-# 45. 自动执行顺序
+# 45. Automatic Execution Order
 
-Codex 严格执行：
+Codex executes strictly:
 
 ```text
 PHASE 1
-检查数据视角映射
-建立 relative camera angle config
+Check the data view mapping
+Build the relative camera angle config
 
 PHASE 2
-运行 Experiment 1
-不训练 viewpoint model
+Run Experiment 1
+Do not train a viewpoint model
 
 PHASE 3
-输出 Experiment 1 benchmark + bootstrap
+Output Experiment 1 benchmark + bootstrap
 
 PHASE 4
-实现 2D top-down virtual occluder
-先可视化若干 synchronized samples
-确认：
-front / left / right 的遮挡变化符合几何规律
+Implement the 2D top-down virtual occluder
+First visualize several synchronized samples
+Confirm:
+occlusion changes across front / left / right follow the geometry
 
 PHASE 5
-检查 multimodal leakage
-保证 masked RGB 不会同时配合完全无遮挡的 pose/object
+Check multimodal leakage
+Ensure masked RGB is not paired with completely unoccluded pose/object
 
 PHASE 6
-只运行 synthetic occlusion diagnostic
-不训练 RL
+Run only the synthetic occlusion diagnostic
+Do not train RL
 
 PHASE 7
-检查 RL Go / No-Go Gate
+Check the RL Go / No-Go Gate
 
 PHASE 8
-只有 Gate 通过才训练 PPO
+Train PPO only if the gate passes
 
 PHASE 9
-输出 synthetic RL benchmark
+Output the synthetic RL benchmark
 
 PHASE 10
-生成联合总结表与日志
+Generate the joint summary table and logs
 ```
 
 ---
 
-# 46. 输出目录建议
+# 46. Suggested Output Directories
 
-在 repository root 下建立：
+Create under the repository root:
 
 ```text
 work_dir/
@@ -1521,7 +1521,7 @@ work_dir/
     logs/
 ```
 
-最终至少保存：
+Save at least the following at the end:
 
 ```text
 summary.json
@@ -1532,7 +1532,7 @@ config.yaml
 run.log
 ```
 
-Experiment 2 额外保存：
+Experiment 2 additionally saves:
 
 ```text
 synthetic_occlusion_config.json
@@ -1542,59 +1542,59 @@ rl_training_curve.csv
 
 ---
 
-# 47. 禁止事项
+# 47. Prohibited Actions
 
-Codex 不要：
+Codex must not:
 
 ```text
-使用 true unseen 调参数
-把 Oracle 信息输入 policy
-给 policy 输入 future candidate 信息
-每个 view 独立随机 mask
-把 synthetic occluder latent world position直接作为 policy state
-发现 Gate 失败后仍自动训练 RL
-为了提升数字擅自改变 VPOCLIP checkpoint
-把 ETRI 固定 camera 结果描述成真实双机器人实验
+Tune parameters on true unseen
+Feed Oracle information into the policy
+Feed future candidate information into the policy
+Use independent random masks per view
+Use the synthetic occluder's latent world position directly as policy state
+Automatically train RL after the gate fails
+Change the VPOCLIP checkpoint without authorization to improve the numbers
+Describe ETRI fixed-camera results as real dual-robot experiments
 ```
 
 ---
 
-# 48. 最终决策逻辑
+# 48. Final Decision Logic
 
 ```text
-Experiment 1 成功：
-    保留 Dual-Robot Preferred Orthogonal
-    作为原始无遮挡环境的简单稳健主方案
+Experiment 1 succeeds:
+    Keep Dual-Robot Preferred Orthogonal
+    as the simple, robust main method for the original occlusion-free environment
 
-Experiment 1 弱：
-    不立即否定
-    继续 Experiment 2
+Experiment 1 is weak:
+    Do not reject it immediately
+    Proceed to Experiment 2
 
-Experiment 2 diagnostic 成功 + RL 成功：
-    说明 RL 需要足够强的 active-perception pressure
-    可形成“无遮挡几何协同 + 遮挡环境学习型主动视角”的完整故事
+Experiment 2 diagnostic succeeds + RL succeeds:
+    This shows RL needs sufficiently strong active-perception pressure
+    A complete story of "occlusion-free geometric coordination + learned active viewpoint under occlusion" can be formed
 
-Experiment 2 diagnostic 成功 + RL 失败：
-    遮挡确实创造了 active-view opportunity
-    但当前 RL/state 仍不足
-    比较 geometry / heuristic 方法，不要强行宣称 RL 成功
+Experiment 2 diagnostic succeeds + RL fails:
+    Occlusion does create an active-view opportunity
+    But the current RL/state is still insufficient
+    Compare geometry / heuristic methods; do not force a claim of RL success
 
-Experiment 2 diagnostic 失败：
-    synthetic occlusion 设计没有创造合理的 active-view problem
-    停止 RL，先修正遮挡模拟器
+Experiment 2 diagnostic fails:
+    The synthetic occlusion design did not create a reasonable active-view problem
+    Stop RL and fix the occlusion simulator first
 ```
 
 ---
 
-# 49. 最终研究叙事
+# 49. Final Research Narrative
 
-如果两个实验都得到合理结果，可以形成这样的故事：
+If both experiments yield reasonable results, the following story can be formed:
 
 > In the original ETRI setting, where occlusion is limited, a simple class-agnostic complementary dual-view formation is competitive and robust for unseen-action recognition. When viewpoint-dependent occlusion is introduced, active movement becomes more consequential; under this setting, we test whether an RL policy can learn to move toward views that recover task-relevant evidence.
 
-注意：
+Note:
 
-- 原始 ETRI 结果用于说明简单几何协同的价值；
-- synthetic occlusion 用于研究 active viewpoint learning 在真正存在遮挡压力时是否有必要；
-- 不要把 synthetic occlusion 当成真实场景等价物；
-- 最终若要冲 robotics venue，最好后续补少量真实机器人 + 真实遮挡物实验。
+- Original ETRI results demonstrate the value of simple geometric coordination;
+- Synthetic occlusion is used to study whether active viewpoint learning is necessary when real occlusion pressure exists;
+- Do not treat synthetic occlusion as equivalent to real scenes;
+- For a future robotics venue submission, it is best to add a small number of real-robot + real-occluder experiments later.

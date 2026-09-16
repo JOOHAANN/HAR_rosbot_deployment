@@ -1,25 +1,25 @@
 # VPOCLIP + dual-robot DDQN portable source/weights archive
 
-本包对应 `ws/VPOCLIP_plus_full/work_dir/dual_robot_depth_ddqn_strict45_5/RESULTS.md`：Full DDQN 65.33%，Random 64.56%，单视角 63.64%。这是 45/5/5 协议，不能直接当作 50/5 的结果。
+This archive corresponds to `ws/VPOCLIP_plus_full/work_dir/dual_robot_depth_ddqn_strict45_5/RESULTS.md`: Full DDQN 65.33%, Random 64.56%, single view 63.64%. This is the 45/5/5 protocol and must not be read as a 50/5 result.
 
-## 内容
+## Contents
 
-- 五个指定目录中的代码、配置、文档、文本实验记录与划分清单；不含原始视频、图片、骨骼数据、视觉特征数组和数据集压缩包。
-- `dual_robot_depth_ddqn_strict45_5/models` 下全部策略权重，包含八种结构的三个训练种子；选择结果和 30 个评测种子记录一并保存。
-- `fusion_lightweight_gating_strict45_5` 下全部融合训练权重。主表实际采用 `models/seed_20260910/best.pt`。
-- VPOCLIP：`work_dir/merged45_10_groupAB/selected_stage_b/last_model.pth`。
-- CTR-GCN：`ws/CTR-GCN_17_full/work_dir/etri_coco17/allviews_cs45_merged_groupAB/runs-51-4029.pt`。
-- X3D：`ws/X3D_full/outputs/etri_allviews_cs45_merged_groupAB_7000/model_best.pth`。
-- YOLO：`ws/yolov5_full/best.pt`。
-- `.cache/clip/ViT-B-32.pt`、RTMPose 与 YOLOX ONNX、MiDaS small 和 EfficientNet 权重，以及 torch hub 源码。
-- 保留冻结文本原型文件。`MANIFEST.json` 列出每个文件的原路径、大小及 SHA256；`SHA256SUMS` 用于传输后校验。
-- HAR 的两个目录链接改为包内相对链接，不重复存储源码。
+- Code, configs, documentation, text experiment logs, and split lists from the five designated directories; raw videos, images, skeleton data, visual feature arrays, and dataset archives are not included.
+- All policy weights under `dual_robot_depth_ddqn_strict45_5/models`, with three training seeds for each of the eight architectures; the selection results and the 30 evaluation seed records are saved alongside.
+- All fusion training weights under `fusion_lightweight_gating_strict45_5`. The main table actually uses `models/seed_20260910/best.pt`.
+- VPOCLIP: `work_dir/merged45_10_groupAB/selected_stage_b/last_model.pth`.
+- CTR-GCN: `ws/CTR-GCN_17_full/work_dir/etri_coco17/allviews_cs45_merged_groupAB/runs-51-4029.pt`.
+- X3D: `ws/X3D_full/outputs/etri_allviews_cs45_merged_groupAB_7000/model_best.pth`.
+- YOLO: `ws/yolov5_full/best.pt`.
+- `.cache/clip/ViT-B-32.pt`, RTMPose and YOLOX ONNX files, MiDaS small and EfficientNet weights, and the torch hub source code.
+- Frozen text prototype files are retained. `MANIFEST.json` lists the original path, size, and SHA256 of each file; `SHA256SUMS` is used for post-transfer verification.
+- The two HAR directory links are rewritten as in-package relative links so that source code is not stored twice.
 
-## 环境与路径
+## Environment and paths
 
-推荐 Linux + NVIDIA GPU，Python 3.10。原环境的完整 pip 版本记录在 `environment/pip-freeze.txt`。这是原机环境快照，CUDA/ONNX Runtime 的运行库仍需与目标显卡和驱动匹配。先安装适配的 PyTorch CUDA，再按项目 requirements 和快照安装依赖；快照中的本机 editable/file URL 应改成包内对应源码路径。
+Linux + NVIDIA GPU and Python 3.10 are recommended. The complete pip version record of the original environment is in `environment/pip-freeze.txt`. This is a snapshot of the original machine; the CUDA/ONNX Runtime runtimes must still match the target GPU and driver. Install a compatible PyTorch CUDA build first, then install the dependencies per the project requirements and the snapshot; the local editable/file URLs in the snapshot should be rewritten to the corresponding in-package source paths.
 
-`environment/requirements-portable.txt` 已将 conda 构建机的本地 file URL 转成包名与版本，并保留 CLIP 的 Git commit。可使用 `python -m pip install --extra-index-url https://download.pytorch.org/whl/cu128 -r environment/requirements-portable.txt` 安装原版本；这一步需要网络和兼容的 NVIDIA 驱动。
+`environment/requirements-portable.txt` already converts the conda build machine's local file URLs into package names and versions, and keeps the Git commit for CLIP. The original versions can be installed with `python -m pip install --extra-index-url https://download.pytorch.org/whl/cu128 -r environment/requirements-portable.txt`; this step requires network access and a compatible NVIDIA driver.
 
 ```bash
 tar -xzf HAR_reproduction_strict45_5.tar.gz
@@ -27,36 +27,36 @@ cd HAR_reproduction
 sha256sum -c SHA256SUMS
 ```
 
-历史脚本含 `/home/youhan/ws`、`/home/youhan/HAR` 和原 conda Python 的绝对路径。最少改动的复现方式是在目标 Linux 上将包中 ws/HAR 放到相同路径，并使用 `/home/youhan/.conda/envs/clipgcn` 环境。若采用其他位置，需要把脚本与 YAML/JSON 内这些路径统一替换为目标路径；不要只修改一个启动配置。`.cache` 下模型应复制到运行用户的同名缓存目录；这样 RTMPose、CLIP、torch hub 可以使用打包的模型。
+The historical scripts contain absolute paths such as `/home/youhan/ws`, `/home/youhan/HAR`, and the original conda Python. The minimal-change reproduction path is to place the packaged ws/HAR at the same paths on the target Linux machine and use the `/home/youhan/.conda/envs/clipgcn` environment. If other locations are used, these paths must be replaced consistently in the scripts and YAML/JSON files with the target paths; do not modify only one launch config. Models under `.cache` should be copied to the same-named cache directory of the user running the jobs, so that RTMPose, CLIP, and torch hub can use the packaged models.
 
-## 数据准备与缓存重建
+## Data preparation and cache rebuild
 
-数据集按要求不在包中。重算精度需要自行准备原 ETRI RGB、3D Skeleton 和相同样本划分；只有权重无法计算数据集准确率。精确的样本/窗口/候选顺序保存在相关 cache 下的 manifest/metadata 文本文件中。全表每个种子使用 291 个完整 final-unseen 样本。
+The dataset is not included in the package, as required. Recomputing accuracy requires preparing the original ETRI RGB, 3D Skeleton, and the same sample splits yourself; weights alone cannot yield dataset accuracy. The exact sample/window/candidate order is stored in the manifest/metadata text files under the relevant caches. Each seed in the full table uses 291 complete final-unseen samples.
 
-配置入口：`ws/VPOCLIP_plus_full/work_dir/frame0_body_angle_rank_strict45_10/build_cache.yaml`，其中包含三流权重、hook 层、输入尺寸、8 秒/13 帧窗口、YOLO 阈值和 subject 列表。
+Config entry: `ws/VPOCLIP_plus_full/work_dir/frame0_body_angle_rank_strict45_10/build_cache.yaml`, which contains the three-stream weights, hook layers, input sizes, the 8-second/13-frame window, YOLO thresholds, and the subject list.
 
-重建顺序：
+Rebuild order:
 
-1. 准备 `ws/ETRI-Activity3D-RGB`、`ws/ETRI-Activity3D-Skeleton`，按保存的 CSV/subject manifest 恢复划分。
-2. 使用 CTR-GCN 的 `tools/extract_rtmpose_coco17.py` 生成 `data/etri_coco17/allviews_cs45/ETRI_55_CS_rtmpose_coco17_13.npz`；调用前查看 `--help` 并保持原采样设置。
-3. 在 VPOCLIP 目录运行 `python -m rl.frame0_body_angle_rank.prepare_strict45_10_inputs`，准备 pose cache 与各 split manifest。
-4. 参考 `rl/frame0_body_angle_rank/run_strict45_10.sh` 中训练之前的缓存构建部分，调用 `rl.build_cache.export_cache` 生成 dqn_train/val/test，生成 `body_yaw_deg.npy`，提取物体 tracks，并将六通道 tracks 转成 `[presence,x,y,confidence]` 四通道。该脚本后半部是其他历史策略训练，不需要执行。
-5. `python -m rl.prepare_strict45_depth` 生成 `data/frame0_body_angle_rank_strict45_10_depth`。若没有旧 depth 数据，创建空的 `data/new50_5_group1_zsl_depth_first_frame_fp32` 目录，脚本会对缺失样本重新提取。
+1. Prepare `ws/ETRI-Activity3D-RGB` and `ws/ETRI-Activity3D-Skeleton`, and restore the splits according to the saved CSV/subject manifests.
+2. Use CTR-GCN's `tools/extract_rtmpose_coco17.py` to generate `data/etri_coco17/allviews_cs45/ETRI_55_CS_rtmpose_coco17_13.npz`; check `--help` before invoking and keep the original sampling settings.
+3. Run `python -m rl.frame0_body_angle_rank.prepare_strict45_10_inputs` in the VPOCLIP directory to prepare the pose cache and the manifests for each split.
+4. Following the cache-building section before training in `rl/frame0_body_angle_rank/run_strict45_10.sh`, call `rl.build_cache.export_cache` to generate dqn_train/val/test, generate `body_yaw_deg.npy`, extract object tracks, and convert the six-channel tracks to `[presence,x,y,confidence]` four channels. The latter half of that script trains other historical policies and does not need to be run.
+5. `python -m rl.prepare_strict45_depth` generates `data/frame0_body_angle_rank_strict45_10_depth`. If no old depth data exists, create an empty `data/new50_5_group1_zsl_depth_first_frame_fp32` directory and the script will re-extract the missing samples.
 
-注意：包保留了参考 metadata 和 complete.json 等记录。重建时应把参考记录备份到其他目录，并使用干净输出目录，避免旧完成标记触发跳过。保留 manifest 用于核对样本顺序；不要误认为存在 metadata 就已有二进制缓存。
+Note: the package retains reference metadata and records such as complete.json. When rebuilding, back up the reference records to another directory and use a clean output directory, so that stale completion markers do not trigger skips. Keep the manifests to verify sample order; do not assume that the existence of metadata implies the binary caches already exist.
 
-## 直接评测已选权重
+## Direct evaluation of selected weights
 
-恢复上述缓存后，在包根目录执行：
+After restoring the caches above, run from the package root:
 
 ```bash
 python evaluate_bundle.py --root "$PWD" --output "$PWD/reproduced_results"
 ```
 
-此入口读取 config_resolved 中八个已选 checkpoint，运行原始随机起点双机器人评测、Random、两种 Cyclic 和单视角，输出 30 seeds、均值、原定义 95% CI 以及相对于保存结果的数值差。不会重新选择 checkpoint。最终融合只含两个目标视角，融合 gate 固定。伪未见 `{1,7,14,15,18}`，最终未见 `{25,39,46,52,54}`。
+This entry point reads the eight selected checkpoints from config_resolved, runs the original random-start dual-robot evaluation, Random, two Cyclic variants, and single view, and outputs 30 seeds, means, the 95% CI under the original definition, and the numeric deltas against the saved results. It does not re-select checkpoints. The final fusion contains only the two target views, and the fusion gate is fixed. Pseudo-unseen `{1,7,14,15,18}`, final unseen `{25,39,46,52,54}`.
 
-需要从头训练策略时，使用 `python -m rl.dual_robot_depth_ddqn_v1.experiment --help`，指定保存配置中的 cache/track/depth/gate 路径、八个 variants、训练 seeds 和 `--distance-lambda 0.25 --true-unseen-classes 1 7 14 15 18 25 39 46 52 54 --pseudo-unseen-classes 1 7 14 15 18`。输出应另设新目录。
+To train a policy from scratch, use `python -m rl.dual_robot_depth_ddqn_v1.experiment --help`, specifying the cache/track/depth/gate paths from the saved configs, the eight variants, the training seeds, and `--distance-lambda 0.25 --true-unseen-classes 1 7 14 15 18 25 39 46 52 54 --pseudo-unseen-classes 1 7 14 15 18`. Outputs should go to a new directory.
 
-## 复现验证范围
+## Reproduction verification scope
 
-打包程序对全部归档文件逐项计算并重新读取验证 SHA256。evaluate_bundle.py 已在原机已有缓存上重新运行完整 30 seeds：八种模型与三个基线的精度和移动代价相对参考结果差值全部为零，单视角为 63.6426%。详见 verification/reference_delta.json、verification/single_view.json 和逐种子记录。迁移后必须补齐数据/缓存再进行同样验证；不同硬件及预处理版本可能带来数值差异，不能仅凭文件打包保证逐位相同。
+The packaging program computes a SHA256 for every archived file and re-reads each file to verify it. evaluate_bundle.py was rerun on the original machine with existing caches for the full 30 seeds: the accuracy and movement-cost deltas of the eight models and three baselines against the reference results are all zero, and single view is 63.6426%. See verification/reference_delta.json, verification/single_view.json, and the per-seed records. After migration, the data/caches must be restored before repeating the same verification; different hardware and preprocessing versions may introduce numeric differences, and bit-identical results cannot be guaranteed by file packaging alone.

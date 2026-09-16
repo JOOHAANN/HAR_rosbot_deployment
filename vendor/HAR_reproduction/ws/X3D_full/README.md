@@ -1,62 +1,62 @@
 <div align="right">
-  语言:
+  Language:
     🇨🇳
-  <a title="英语" href="./README.en.md">🇺🇸</a>
-  <!-- <a title="俄语" href="../ru/README.md">🇷🇺</a> -->
+  <a title="English" href="./README.en.md">🇺🇸</a>
+  <!-- <a title="Russian" href="../ru/README.md">🇷🇺</a> -->
 </div>
 
  <div align="center"><a title="" href="https://github.com/ZJCV/X3D"><img align="center" src="./imgs/X3D.png"></a></div>
 
 <p align="center">
-  «X3D»复现了论文<a title="" href="https://arxiv.org/abs/2004.04730">X3D: Expanding Architectures for Efficient Video Recognition </a>提出的视频分类模型
-<br>
-<br>
+  «X3D» reproduces the video classification model proposed in the paper <a title="" href="https://arxiv.org/abs/2004.04730">X3D: Expanding Architectures for Efficient Video Recognition </a>
+  <br>
+  <br>
   <a href="https://github.com/RichardLitt/standard-readme"><img src="https://img.shields.io/badge/standard--readme-OK-green.svg?style=flat-square"></a>
   <a href="https://conventionalcommits.org"><img src="https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg"></a>
   <a href="http://commitizen.github.io/cz-cli/"><img src="https://img.shields.io/badge/commitizen-friendly-brightgreen.svg"></a>
 </p>
 
-其`CodeBase`来自于[ZJCV/Non-local](https://github.com/ZJCV/Non-local)
+Its `CodeBase` comes from [ZJCV/Non-local](https://github.com/ZJCV/Non-local)
 
-## 内容列表
+## Table of Contents
 
-- [内容列表](#内容列表)
-- [背景](#背景)
-- [安装](#安装)
-- [使用](#使用)
-- [主要维护人员](#主要维护人员)
-- [致谢](#致谢)
-- [参与贡献方式](#参与贡献方式)
-- [许可证](#许可证)
+- [Table of Contents](#table-of-contents)
+- [Background](#background)
+- [Install](#install)
+- [Usage](#usage)
+- [Maintainers](#maintainers)
+- [Acknowledgements](#acknowledgements)
+- [Contributing](#contributing)
+- [License](#license)
 
-## 背景
+## Background
 
-论文作者详细的分析了之前的视频理解模型的发展，提出`6`个关键变量，通过逐步测试的方式搜索更好的模型，最终得到`6`个不同变量大小的`X3D`模型
+The paper authors analyze the development of previous video understanding models in detail, propose `6` key variables, search for better models through progressive testing, and finally obtain `6` `X3D` models at different variable scales.
 
-## 安装
+## Install
 
-通过`requirements.txt`安装运行所需依赖
+Install the dependencies required for running via `requirements.txt`
 
 ```
 $ pip install -r requirements.txt
 ```
 
-处理数据时需要额外安装[denseflow](https://github.com/open-mmlab/denseflow)，可以在[innerlee/setup](https://github.com/innerlee/setup)中找到安装脚本
+Data processing additionally requires [denseflow](https://github.com/open-mmlab/denseflow); installation scripts can be found in [innerlee/setup](https://github.com/innerlee/setup).
 
-## 使用
+## Usage
 
-首先设置`GPU`和当前位置
+First set the `GPU` and the current location
 
 ```
 $ export CUDA_VISIBLE_DEVICES=1
 $ export PYTHONPATH=.
 ```
 
-## 主要维护人员
+## Maintainers
 
 * zhujian - *Initial work* - [zjykzj](https://github.com/zjykzj)
 
-## 致谢
+## Acknowledgements
 
 * [ facebookresearch/SlowFast](https://github.com/facebookresearch/SlowFast)
 * [open-mmlab/mmaction2](https://github.com/open-mmlab/mmaction2)
@@ -72,16 +72,16 @@ $ export PYTHONPATH=.
 }
 ```
 
-## 参与贡献方式
+## Contributing
 
-欢迎任何人的参与！打开[issue](https://github.com/ZJCV/X3D/issues)或提交合并请求。
+Contributions from anyone are welcome! Open an [issue](https://github.com/ZJCV/X3D/issues) or submit a pull request.
 
-注意:
+Notes:
 
-* `GIT`提交，请遵守[Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0-beta.4/)规范
-* 语义版本化，请遵守[Semantic Versioning 2.0.0](https://semver.org)规范
-* `README`编写，请遵守[standard-readme](https://github.com/RichardLitt/standard-readme)规范
+* For `GIT` commits, please follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0-beta.4/) specification
+* For semantic versioning, please follow the [Semantic Versioning 2.0.0](https://semver.org) specification
+* For `README` files, please follow the [standard-readme](https://github.com/RichardLitt/standard-readme) specification
 
-## 许可证
+## License
 
 [Apache License 2.0](LICENSE) © 2020 zjykzj

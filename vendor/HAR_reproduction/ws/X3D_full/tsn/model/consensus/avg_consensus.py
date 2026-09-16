@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/8/28 下午6:47
+@date: 2020/8/28 6:47 PM
 @file: avg_consensus.py
 @author: zj
 @description: 
