@@ -6,8 +6,6 @@ This is the official repository for the paper:
 >
 > Youhan Li\*†, Jinhua Xu\*¹², Antonio Sgorbissa¹, Carmine Tommaso Recchiuto¹
 >
-> \* Equal contribution. † Corresponding author: youhan.li@edu.unige.it
->
 > ¹ Department of Informatics, Bioengineering, Robotics, and Systems Engineering (DIBRIS), University of Genoa, Italy
 > ² Department of Computer, Control, and Management Engineering, Sapienza University of Rome, Italy
 
