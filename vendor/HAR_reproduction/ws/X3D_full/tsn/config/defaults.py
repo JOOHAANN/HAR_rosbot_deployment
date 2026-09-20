@@ -127,24 +127,24 @@ _C.MODEL = CN()
 _C.MODEL.NAME = "TSN"
 _C.MODEL.PRETRAINED = ""
 _C.MODEL.SYNC_BN = False
-# 卷积层类型
+# convolution layer type
 _C.MODEL.CONV_LAYER = 'Conv2d'
-# 池化层类型
+# pooling layer type
 _C.MODEL.POOL_LAYER = 'MaxPool2d'
-# 归一化层类型
+# normalization layer type
 _C.MODEL.NORM_LAYER = 'BatchNorm2d'
-# 激活层类型
+# activation layer type
 _C.MODEL.ACT_LAYER = 'ReLU'
 
 _C.MODEL.BACKBONE = CN()
 _C.MODEL.BACKBONE.NAME = 'R50'
-# 输入通道数
+# number of input channels
 _C.MODEL.BACKBONE.IN_CHANNELS = 3
-# 是否进行partialBN
+# whether to apply partial BN
 _C.MODEL.BACKBONE.PARTIAL_BN = False
-# 是否加载预训练模型
+# whether to load a pretrained model
 _C.MODEL.BACKBONE.TORCHVISION_PRETRAINED = False
-# 是否进行残差分支零初始化
+# whether to zero-initialize residual branches
 _C.MODEL.BACKBONE.ZERO_INIT_RESIDUAL = False
 
 _C.MODEL.HEAD = CN()

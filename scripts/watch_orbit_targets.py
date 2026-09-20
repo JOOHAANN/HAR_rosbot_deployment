@@ -144,9 +144,9 @@ class OrbitTargetMonitor(Node):
             lines.append("\033[2J\033[H")
         lines.append("=" * 68)
         lines.append("HAR ORBIT TARGET MONITOR  (READ-ONLY)")
-        lines.append("按 Ctrl-C 退出监视器；不会停止机器人系统。")
+        lines.append("Press Ctrl-C to exit the monitor; this does not stop the robot system.")
 
-        state_name = (self.state or {}).get("state", "等待状态")
+        state_name = (self.state or {}).get("state", "waiting for state")
         lines.append(f"state: {state_name}")
         if self.online_human is not None:
             x, y, yaw = self.online_human
@@ -162,14 +162,14 @@ class OrbitTargetMonitor(Node):
                     f"yaw_to_human={pose_yaw(pose.orientation):.1f}°"
                 )
         if self.plan is None:
-            lines.append("\n等待 /har/orbit/plan ……")
-            lines.append("请确认有人在相机中，并保持 orbit coordinator 正在运行。")
+            lines.append("\nWaiting for /har/orbit/plan ...")
+            lines.append("Make sure a person is visible to the camera and the orbit coordinator is running.")
             print("\n".join(lines), flush=True)
             return
 
         plan = self.plan
         dry_run = bool(plan.get("dry_run", True))
-        mode = "DRY-RUN（不移动）" if dry_run else "LIVE（会移动）"
+        mode = "DRY-RUN (no motion)" if dry_run else "LIVE (robots will move)"
         age = max(0.0, now - self.last_plan_received) if self.last_plan_received else 0.0
         center = plan.get("human_center") or {}
         lines.append(f"mode: {mode}    motion_cycle: {plan.get('motion_cycle', '?')}    plan_age: {age:.1f}s")

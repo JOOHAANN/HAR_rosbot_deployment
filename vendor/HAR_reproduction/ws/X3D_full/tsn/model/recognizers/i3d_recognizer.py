@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/9/29 下午3:30
+@date: 2020/9/29 3:30 PM
 @file: i3d_recognizer.py
 @author: zj
 @description: 

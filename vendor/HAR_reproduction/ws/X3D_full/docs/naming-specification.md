@@ -1,13 +1,13 @@
 
-# 命名规范
+# Naming Specification
 
-## 配置文件
+## Configuration Files
 
 ```
 <core algorithm>-<backbone>-<dataset>-<modality>-<data format>-<sample strategy>-<clip_len>x<frame_interval>x<num_clips>
 ```
 
-比如配置文件`tsn_r50_ucf101_rgb_raw_dense_1x16x4`
+For example, the configuration file `tsn_r50_ucf101_rgb_raw_dense_1x16x4`
 
 * `core algorithm: tsn`
 * `backbone: r50(resnet-50)`

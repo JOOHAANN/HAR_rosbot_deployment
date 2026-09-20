@@ -77,7 +77,7 @@ def main():
         print(f"{split:8s} {args.scale:6.2f} {S*100:7.2f}% {U*100:7.2f}% {H*100:7.2f}% "
               f"{(u5*100 if u5 is not None else float('nan')):7.2f}%")
         print(f"         ckpt: {ckpt.relative_to(ROOT)}")
-    print("\nH = 2SU/(S+U); S=seen测试样本@全候选, U=unseen样本@全候选, unseen分数×scale")
+    print("\nH = 2SU/(S+U); S=seen test samples @ all candidates, U=unseen samples @ all candidates, unseen scores ×scale")
 
 
 if __name__ == "__main__":

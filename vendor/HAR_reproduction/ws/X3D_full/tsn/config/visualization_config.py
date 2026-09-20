@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/10/19 上午9:33
+@date: 2020/10/19 9:33 AM
 @file: visualization_config.py
 @author: zj
 @description: 

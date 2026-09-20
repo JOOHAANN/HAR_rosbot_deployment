@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/8/23 上午9:51
+@date: 2020/8/23 9:51 AM
 @file: inference.py
 @author: zj
 @description: 

@@ -181,7 +181,7 @@ def main():
     out.with_suffix(".metadata.json").write_text(json.dumps(meta, indent=2))
     print(f"saved {out}; failures={len(failures)}; elapsed {meta['elapsed_sec']}s")
     det_rate = presence.any(axis=1).mean()
-    print(f"样本级检出率: {det_rate:.3f}; 出现过的类别数: {int((presence.sum(axis=0) > 0).sum())}")
+    print(f"sample-level detection rate: {det_rate:.3f}; classes observed: {int((presence.sum(axis=0) > 0).sum())}")
 
 
 if __name__ == "__main__":

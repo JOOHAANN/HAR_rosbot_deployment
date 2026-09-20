@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/10/10 上午9:12
+@date: 2020/10/10 9:12 AM
 @file: test_clipsample.py
 @author: zj
 @description: 

@@ -24,7 +24,7 @@ except ImportError:
 
 
 def load_config(config_path):
-    # 读取 YAML，把训练参数集中放到 config.yaml 里管理。
+    # Read the YAML and centralize the training parameters in config.yaml.
     try:
         import yaml
     except ImportError as exc:
@@ -35,7 +35,7 @@ def load_config(config_path):
 
 
 def get_path_from_config(config_path, path):
-    # YAML 里的相对路径默认相对于 config.yaml 所在目录。
+    # Relative paths in the YAML are relative to the directory containing config.yaml by default.
     if path is None or os.path.isabs(path):
         return path
     config_dir = os.path.dirname(os.path.abspath(config_path))
@@ -54,7 +54,7 @@ class CocoCaptionDataset(Dataset):
         with open(annotation_file, "r", encoding="utf-8") as f:
             coco = json.load(f)
 
-        # COCO caption json 里 images 存文件名，annotations 存 caption。
+        # In the COCO caption json, images stores file names and annotations stores captions.
         id_to_filename = {}
         for image_info in coco["images"]:
             id_to_filename[image_info["id"]] = image_info["file_name"]
@@ -87,7 +87,7 @@ class CocoCaptionDataset(Dataset):
             raise ValueError("No image-caption samples found in {} and {}".format(image_dir, annotation_file))
 
     def get_image_path(self, file_name):
-        # 兼容 COCO_..._000000123456.jpg 和 000000123456.jpg 两种命名。
+        # Support both naming styles COCO_..._000000123456.jpg and 000000123456.jpg.
         image_path = os.path.join(self.image_dir, file_name)
         if os.path.exists(image_path):
             return image_path
@@ -118,7 +118,7 @@ class CocoCaptionDataset(Dataset):
 
 
 def build_transform(transform_config):
-    # 图片最终要变成 [3, 224, 224] 这种 tensor，才能送进 image encoder。
+    # Images must finally become tensors like [3, 224, 224] before they can be fed into the image encoder.
     transform_list = [
         transforms.Resize(tuple(transform_config["resize"])),
         transforms.ToTensor(),
@@ -132,7 +132,7 @@ def build_transform(transform_config):
 
 
 def train_val_data_process(config, config_path):
-    # Dataset 每次返回一张 image tensor 和一条 caption 字符串。
+    # The Dataset returns one image tensor and one caption string each time.
     dataset_config = config["data"]["dataset"]
     loader_config = config["data"]["dataloader"]
     transform = build_transform(config["data"]["transforms"])
@@ -212,7 +212,7 @@ def train_model_process(model, train_data_loader, val_data_loader, config, confi
     optimizer_config = train_config["optimizer"]
     output_config = config["outputs"]
 
-    # CLIP text encoder 已冻结，所以只优化 requires_grad=True 的参数。
+    # The CLIP text encoder is frozen, so optimize only parameters with requires_grad=True.
     params = [p for p in model.parameters() if p.requires_grad]
     if optimizer_config["name"] == "Adam":
         optimizer = torch.optim.Adam(
@@ -255,13 +255,13 @@ def train_model_process(model, train_data_loader, val_data_loader, config, confi
 
         for images, captions in train_bar:
             images = images.to(device)
-            # captions 是字符串列表，不能调用 .to(device)。
+            # captions is a list of strings and cannot be moved with .to(device).
             captions = list(captions)
 
             optimizer.zero_grad(set_to_none=True)
 
             with torch.amp.autocast("cuda", enabled=use_amp):
-                # CLIP-COCO 的核心训练目标：让同一位置的 image 和 caption 更相似。
+                # Core training objective of CLIP-COCO: make the image and caption at the same position more similar.
                 loss = model.contrastive_loss(images, captions)
 
             scaler.scale(loss).backward()

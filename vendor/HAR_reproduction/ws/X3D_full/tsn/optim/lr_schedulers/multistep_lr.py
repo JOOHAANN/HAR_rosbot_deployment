@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/8/27 下午2:28
+@date: 2020/8/27 2:28 PM
 @file: multistep_lr.py
 @author: zj
 @description: 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/11/3 上午10:17
+@date: 2020/11/3 10:17 AM
 @file: conv_helper.py
 @author: zj
 @description: 
@@ -30,11 +30,11 @@ def convTx1x1(in_planes, out_planes, kernel_size=(1, 1, 1), padding=(0, 0, 0), b
 
 class ChannelWiseConv3d(nn.Module):
     """
-    通道可分离卷积
+    Channel-wise separable convolution
     channel-wise separable convolution
-    来自文章MobileNets: Efficient convolutional neural networks for mobile vision applications.
+    From the paper MobileNets: Efficient convolutional neural networks for mobile vision applications.
     arXiv preprint arXiv:1704.04861
-    参考SlowFast实现
+    Reference: SlowFast implementation
     """
 
     def __init__(self,

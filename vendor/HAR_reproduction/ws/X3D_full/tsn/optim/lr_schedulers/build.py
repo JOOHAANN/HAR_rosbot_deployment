@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/11/3 上午10:50
+@date: 2020/11/3 10:50 AM
 @file: build.py
 @author: zj
 @description: 

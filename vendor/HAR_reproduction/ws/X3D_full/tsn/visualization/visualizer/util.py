@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/10/22 上午9:25
+@date: 2020/10/22 9:25 AM
 @file: util.py
 @author: zj
 @description: 
@@ -32,12 +32,12 @@ def get_class_names(path):
     #     return
     #
     # class_names = [None] * len(class2idx)
-    # # 如果类标签从1开始
+    # # if class labels start from 1
     # if min(class2idx.values()) == 1:
     #     for k, i in class2idx.items():
     #         class_names[i - 1] = k
     # else:
-    #     # 从0开始
+    #     # start from 0
     #     for k, i in class2idx.items():
     #         class_names[i] = k
 

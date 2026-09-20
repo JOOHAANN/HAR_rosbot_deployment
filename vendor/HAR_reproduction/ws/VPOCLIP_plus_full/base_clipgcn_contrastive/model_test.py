@@ -67,5 +67,5 @@ if __name__ == "__main__":
             pre_label = torch.argmax(outputs, dim=1)
             result = pre_label.item() == b_y.item()
             
-            print("预测标签：", pre_label.item())
-            print("真实标签：", b_y.item())
+            print("Predicted label:", pre_label.item())
+            print("True label:", b_y.item())

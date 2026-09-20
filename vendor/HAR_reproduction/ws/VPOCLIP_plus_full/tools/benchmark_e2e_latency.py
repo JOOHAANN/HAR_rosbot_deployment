@@ -121,7 +121,7 @@ def load_ctrgcn(config_path, weights, device):
 
     model.l4.register_forward_hook(hook)
 
-    # CTR-GCN 的 model 包与 CLIPGCN 的 model.py 同名, 用完清掉避免冲突
+    # CTR-GCN's "model" package has the same name as CLIPGCN's model.py; drop it after use to avoid conflicts
     for name in list(sys.modules):
         if name == "model" or name.startswith("model."):
             del sys.modules[name]
@@ -172,11 +172,11 @@ def make_object_rs_map(det, img_hw, device, grid_size=6, max_w=10.0):
 
 def main():
     args = parse_args()
-    assert torch.cuda.is_available(), "需要GPU"
+    assert torch.cuda.is_available(), "GPU required"
     device = torch.device("cuda:0")
     print(f"GPU: {torch.cuda.get_device_name(0)}")
 
-    # ---------------- 加载全部模型 (不计时) ----------------
+    # ---------------- load all models (not timed) ----------------
     print("loading models ...")
     yolo, imgsz = load_yolo(args.yolo_weights, device, args.yolo_imgsz)
     from utils.general import non_max_suppression  # yolov5, path already inserted
@@ -187,18 +187,18 @@ def main():
     clipgcn = load_clipgcn(args.clipgcn_config, args.clipgcn_checkpoint, device)
     print("models loaded.")
 
-    # ---------------- 预置输入 (不计时, 无磁盘IO进入计时段) ----------------
+    # ---------------- prepare inputs (not timed; no disk IO inside the timed region) ----------------
     cache = np.load(args.sample_source, mmap_mode="r")
     clip_np = np.array(cache[0], dtype=np.float32)               # (3,13,160,160)
-    clip = torch.from_numpy(clip_np).unsqueeze(0).to(device)     # X3D 输入
+    clip = torch.from_numpy(clip_np).unsqueeze(0).to(device)     # X3D input
 
-    frame7 = clip_np[:, 6]                                       # (3,160,160) 第7帧
+    frame7 = clip_np[:, 6]                                       # (3,160,160) 7th frame
     frame7 = (frame7 * IMAGENET_STD + IMAGENET_MEAN).clip(0, 1)
     frame7_uint8 = np.ascontiguousarray(
-        (np.transpose(frame7, (1, 2, 0)) * 255).astype(np.uint8))  # HWC RGB, 在内存
+        (np.transpose(frame7, (1, 2, 0)) * 255).astype(np.uint8))  # HWC RGB, in memory
 
-    skel = torch.randn(1, 3, 13, 25, 2, device=device)           # CTR-GCN 输入(数值不影响耗时)
-    joint_xy = torch.rand(1, 13, 25, 2, device=device)           # 融合的关节坐标
+    skel = torch.randn(1, 3, 13, 25, 2, device=device)           # CTR-GCN input (values do not affect timing)
+    joint_xy = torch.rand(1, 13, 25, 2, device=device)           # joint coordinates for fusion
 
     def stage_yolo():
         img = letterbox(frame7_uint8, imgsz, stride=yolo.stride, auto=yolo.pt)[0]
@@ -210,7 +210,7 @@ def main():
 
     def stage_x3d():
         with torch.no_grad():
-            # 复刻特征抽取管线: 160 -> 182 resize 后过骨干, s5 输出 6x6
+            # Mirror the feature-extraction pipeline: resize 160 -> 182, then backbone; s5 outputs 6x6
             x = clip.transpose(1, 2).reshape(13, 3, 160, 160)
             x = torch.nn.functional.interpolate(x, size=(182, 182), mode="bilinear", align_corners=False)
             x = x.reshape(1, 13, 3, 182, 182).transpose(1, 2).contiguous()
@@ -221,7 +221,7 @@ def main():
     def stage_ctr():
         with torch.no_grad():
             ctr(skel)
-        f = ctr_feats["l4"]                                      # 期望 (N*M,64,13,25) 或类似
+        f = ctr_feats["l4"]                                      # expected (N*M,64,13,25) or similar
         if f.ndim == 4 and f.shape[0] == 2:
             f = f.unsqueeze(0)                                   # (1,2,64,13,25)
         elif f.ndim == 4:
@@ -240,7 +240,7 @@ def main():
             obj = stage_yolo(); vf = stage_x3d(); pf = stage_ctr(); stage_fusion(vf, pf, obj)
     torch.cuda.synchronize()
 
-    # ---------------- 分阶段计时 ----------------
+    # ---------------- per-stage timing ----------------
     stages = {"yolo(det+RSmap)": [], "x3d(s5)": [], "ctrgcn(l4)": [], "fusion+cosine": []}
     print(f"timing x{args.iters} (batch=1) ...")
     with torch.no_grad():
@@ -259,8 +259,8 @@ def main():
             stages["ctrgcn(l4)"].append(t3 - t2)
             stages["fusion+cosine"].append(t4 - t3)
 
-    # ---------------- 报告 ----------------
-    print("\n================ batch=1 端到端延迟 (不含磁盘IO) ================")
+    # ---------------- report ----------------
+    print("\n================ batch=1 end-to-end latency (disk IO excluded) ================")
     total_mean = 0.0
     for name, ts in stages.items():
         arr = np.array(ts) * 1000
@@ -268,8 +268,8 @@ def main():
         print(f"{name:18s}: {arr.mean():7.2f} ms  (std {arr.std():.2f}, p50 {np.percentile(arr,50):.2f}, p95 {np.percentile(arr,95):.2f})")
     print("-" * 60)
     print(f"{'TOTAL':18s}: {total_mean:7.2f} ms/clip  ->  {1000.0/total_mean:.1f} clips/s")
-    print("\n注: YOLO阶段含 letterbox预处理+H2D拷贝+NMS+RS map构建;")
-    print("    骨架关键点获取(相机/姿态估计)不在测量范围内; 文本原型为部署期常量, 已预计算。")
+    print("\nNote: the YOLO stage includes letterbox preprocessing + H2D copy + NMS + RS map build;")
+    print("    skeleton keypoint acquisition (camera/pose estimation) is out of scope; text prototypes are deployment-time constants and precomputed.")
 
 
 if __name__ == "__main__":

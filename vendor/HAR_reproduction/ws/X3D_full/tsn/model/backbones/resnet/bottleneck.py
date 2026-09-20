@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/9/25 下午1:57
+@date: 2020/9/25 1:57 PM
 @file: bottleneck_3d.py
 @author: zj
 @description: 

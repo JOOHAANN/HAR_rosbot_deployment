@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/4/27 下午8:25
+@date: 2020/4/27 8:25 PM
 @file: metrics.py
 @author: zj
 @description: 
@@ -25,10 +25,10 @@ def compute_num_flops(model):
 
 def topk_accuracy(output, target, topk=(1,)):
     """
-    计算前K个。N表示样本数，C表示类别数
-    :param output: 大小为[N, C]，每行表示该样本计算得到的C个类别概率
-    :param target: 大小为[N]，每行表示指定类别
-    :param topk: tuple，计算前top-k的accuracy
+    Computes top-K accuracy. N is the number of samples, C is the number of classes
+    :param output: tensor of shape [N, C]; each row contains the C class probabilities computed for one sample
+    :param target: tensor of shape [N]; each element is the ground-truth class index
+    :param topk: tuple of top-k accuracies to compute
     :return: list
     """
     assert len(output.shape) == 2 and output.shape[0] == target.shape[0]

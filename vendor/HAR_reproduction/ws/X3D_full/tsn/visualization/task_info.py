@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-@date: 2020/10/22 上午9:20
+@date: 2020/10/22 9:20 AM
 @file: task_info.py
 @author: zj
 @description: 

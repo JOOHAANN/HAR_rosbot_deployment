@@ -16,7 +16,7 @@ Usage:
   cd /workspace/CLIPGCN
   CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=1 \
     /root/miniconda3/envs/clipgcn/bin/python tools/run_elderly_gzsl_eval.py --scale 1.18
-  # 只看选类结果不跑测试: 加 --dry-run
+  # to only show the selected classes without running tests: add --dry-run
 """
 import argparse
 import json
@@ -105,13 +105,13 @@ def main():
     parser.add_argument("--splits", nargs="+", default=["50_5", "45_10", "40_15"])
     parser.add_argument("--scale", type=float, default=1.18,
                         help="unseen-score-scale (calibrated stacking)")
-    parser.add_argument("--seed", type=int, default=20260712, help="随机补位的种子(可复现)")
-    parser.add_argument("--dry-run", action="store_true", help="只打印选类结果, 不跑测试")
+    parser.add_argument("--seed", type=int, default=20260712, help="seed for random backfilling (reproducible)")
+    parser.add_argument("--dry-run", action="store_true", help="only print the selected classes, do not run tests")
     args = parser.parse_args()
 
     names = load_action_names()
     preferred = load_preferred_seen()
-    print(f"class_selection.yaml 里标 seen 的偏好类({len(preferred)}个): {preferred}\n")
+    print(f"preferred classes marked seen in class_selection.yaml ({len(preferred)}): {preferred}\n")
 
     results = []
     for split in args.splits:
@@ -123,7 +123,7 @@ def main():
 
         print(f"===== {split}: 13 seen + {len(split_unseen)} unseen =====")
         if dropped:
-            print(f"  (偏好类中不在该划分seen集而被替换的: {dropped})")
+            print(f"  (preferred classes not in this split's seen set, replaced with: {dropped})")
         for c in chosen:
             print(f"  seen   label={c:2d}  {names[c]}")
         for c in split_unseen:

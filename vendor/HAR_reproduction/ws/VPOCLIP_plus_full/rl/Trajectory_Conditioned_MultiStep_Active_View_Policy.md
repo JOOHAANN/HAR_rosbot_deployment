@@ -1,74 +1,74 @@
-# 轨迹条件的多步主动视角策略
+# Trajectory-Conditioned Multi-Step Active-View Policy
 
-版本：multistep_angle_object_trajectory_policy_v1
+Version: multistep_angle_object_trajectory_policy_v1
 
-本文档记录当前已经实现并完成测试的方案：使用样本级相机方位、人体轨迹和 object detection 连续轨迹，逐步选择下一个尚未观察的视角，并将已经观察到的视角融合用于动作识别。
+This document describes the approach that is currently implemented and tested: using sample-level camera azimuth, human trajectory, and object-detection tracks to select the next unobserved view step by step, and fusing the observed views for action recognition.
 
-本文档中的“策略”沿用项目中的 RL/主动视角称呼，但当前实现不是端到端 PPO，也不是在线环境中的经典 DQN。它是一个低容量的候选视角评分网络，使用 seen 类上的离线识别收益构造排序目标进行训练；VPOCLIP 始终冻结。这样做的目的，是先隔离“传感器状态能否预测有用视角”这个问题。
+The term "policy" here follows the project's RL / active-view naming, but the current implementation is neither end-to-end PPO nor a classic DQN in an online environment. It is a low-capacity candidate-view scoring network trained with ranking targets built from offline recognition utility on seen classes; VPOCLIP is always frozen. The purpose is to first isolate the question of whether sensor state can predict useful views.
 
-## 1. 研究目标
+## 1. Research Goal
 
-对于一个动作样本，机器人从一个低视角开始观察。策略在每一步只能使用当前已经获得的传感器信息，从尚未观察的有效候选视角中选择下一个视角：
+For an action sample, the robot starts observing from one low view. At each step the policy can use only the sensor information obtained so far to select the next view from the valid candidate views that have not yet been observed:
 
 \[
 a_t=\arg\max_{a\in\mathcal A_t}Q_\theta(s_t,a)
 \]
 
-其中：
+where:
 
-- a_t 是视角槽位序号，不是动作类别，也不是连续角度；
-- s_t 是当前和历史已观察视角形成的因果状态；
-- A_t 只包含有效、可到达、且尚未访问的视角；
-- VPOCLIP 负责动作识别，策略只负责视角选择。
+- a_t is the view-slot index, not an action class and not a continuous angle;
+- s_t is the causal state formed by the currently and previously observed views;
+- A_t contains only valid, reachable, and not-yet-visited views;
+- VPOCLIP handles action recognition; the policy handles only view selection.
 
-当前数据每个样本最多有 4 个有效低视角，因此有意义的移动上限是 3 次：
+Current data has at most 4 valid low views per sample, so the meaningful upper bound on moves is 3:
 
-    0 次移动：1 个视角融合
-    1 次移动：2 个视角融合
-    2 次移动：3 个视角融合
-    3 次移动：4 个视角融合
+    0 moves: fuse 1 view
+    1 move: fuse 2 views
+    2 moves: fuse 3 views
+    3 moves: fuse 4 views
 
-超过 3 次只能重复访问已经看过的视角。在离线缓存中重复视角不会产生新观测，因此不能作为新的视觉信息实验。
+More than 3 moves only revisits already-seen views. Repeating a view in the offline cache produces no new observation, so it cannot count as an experiment with new visual information.
 
-## 2. 数据和划分
+## 2. Data and Splits
 
-### 2.1 输入视频和时间采样
+### 2.1 Input Videos and Temporal Sampling
 
-- 原始视频参考分辨率：640 × 480；
-- 每个视角使用与 VPOCLIP 缓存一致的 13 个时间帧；
-- object detection 在这 13 个帧上逐帧运行；
-- 轨迹缓存不是重新定义一套抽帧规则，而是复用 VPOCLIP cache 的 sample_frames。
+- Reference resolution of the raw videos: 640 × 480;
+- Each view uses the same 13 temporal frames as the VPOCLIP cache;
+- object detection runs frame by frame on these 13 frames;
+- The track cache does not define a new frame-sampling rule; it reuses the sample_frames of the VPOCLIP cache.
 
-object 轨迹缓存的单个样本形状为：
+The per-sample shape of the object track cache is:
 
     [4 views, 13 frames, 50 object classes, 4 channels]
 
-4 个原始 object 通道为：
+The 4 raw object channels are:
 
     [presence, x, y, confidence]
 
-x/y 是归一化图像坐标，范围为 [-1, 1]，y 轴向下。
+x/y are normalized image coordinates in [-1, 1], with the y axis pointing downward.
 
-### 2.2 类别划分
+### 2.2 Class Splits
 
-训练只使用 seen 类。验证集使用预先指定的 pseudo-unseen seen 类进行模型选择；真实 unseen 只在最后测试时使用，不能参与调参。
+Training uses only seen classes. The validation set uses pre-specified pseudo-unseen seen classes for model selection; real unseen classes are used only in the final test and must not participate in hyperparameter tuning.
 
-真实 unseen 采用严格的 5-way 评测：
+Real unseen uses a strict 5-way evaluation:
 
     [A001, A003, A027, A035, A051]
     class id = [0, 2, 26, 34, 50]
 
-评测时的预测类别先限制到这 5 类，不是在 55 类中做 general prediction。
+At evaluation time, predictions are first restricted to these 5 classes; it is not a general prediction over all 55 classes.
 
-### 2.3 视角方位映射
+### 2.3 View Azimuth Mapping
 
-视角槽位 0/1/2/3 不具有固定的“左/前/右/后”语义。每个 recording 使用自己的相机方位信息：
+View slots 0/1/2/3 have no fixed "left/front/right/back" semantics. Each recording uses its own camera azimuth information:
 
     view_geometry[..., 0:2] = [sin(relative_angle), cos(relative_angle)]
 
-因此，策略使用的是每个样本、每个视角自己的相对方位，而不是把 camera ID 当作方位标签。若某个 recording 的 view3 在人体右侧，另一个 recording 的 view3 可能在左侧，网络都通过 geometry 向量区分。
+Therefore, the policy uses the per-sample, per-view relative azimuth rather than treating the camera ID as an azimuth label. If view3 of one recording is on the person's right, view3 of another recording may be on the left; the network distinguishes them through the geometry vectors.
 
-样本级几何也用于计算候选之间的相对角度：
+Sample-level geometry is also used to compute the relative angle between candidates:
 
 \[
 \sin(\Delta\theta_v)=
@@ -80,93 +80,93 @@ x/y 是归一化图像坐标，范围为 [-1, 1]，y 轴向下。
 \sin\theta_v\sin\theta_c+\cos\theta_v\cos\theta_c
 \]
 
-其中 c 是当前视角，v 是候选视角。
+where c is the current view and v is the candidate view.
 
-## 3. 策略状态
+## 3. Policy State
 
-状态严格遵守因果约束：策略只能看当前和历史已经观察过的内容，不能读取未来视角的 RGB、VPOCLIP 特征或未来遮挡信息。
+The state strictly follows the causal constraint: the policy can only see what has been observed in the current and past views, and cannot read future-view RGB, VPOCLIP features, or future occlusion information.
 
-### 3.1 人体轨迹
+### 3.1 Human Trajectory
 
-缓存的 pose 是 13 × 17 × 2 = 442 维。每一帧取 COCO17 的四个躯干点：
+The cached pose is 13 × 17 × 2 = 442 dimensions. Each frame takes four torso points from COCO17:
 
-    左右肩：5, 6
-    左右髋：11, 12
+    left/right shoulders: 5, 6
+    left/right hips: 11, 12
 
-计算躯干中心和速度，形成：
+Compute the torso center and velocity to form:
 
     person_trajectory: [13, 4]
     [center_x, center_y, velocity_x, velocity_y]
 
-如果已经观察了多个视角，当前实现对已观察视角的轨迹做平均，形成历史传感器摘要。没有使用未来视角的 pose。
+If multiple views have been observed, the current implementation averages the trajectories of the observed views to form a historical sensor summary. No future-view pose is used.
 
-### 3.2 Object 连续轨迹
+### 3.2 Object Tracks
 
-原始 object 轨迹为：
+The raw object track is:
 
     [13, 50, 4]
     [presence, x, y, confidence]
 
-进一步加入 object 相对于人体躯干中心的位置：
+The object's position relative to the human torso center is further added:
 
     relative_x = object_x - person_center_x
     relative_y = object_y - person_center_y
 
-最终送入策略的 object 状态为：
+The final object state fed to the policy is:
 
     object_trajectory: [13, 50, 6]
     [presence, x, y, confidence, relative_x, relative_y]
 
-这使策略能够区分：
+This lets the policy distinguish:
 
-- 某个物体是否出现；
-- 物体在图像中的绝对位置；
-- 物体相对于人体的位置；
-- 物体位置是否随时间变化；
-- 检测置信度是否稳定。
+- whether an object appears;
+- the object's absolute position in the image;
+- the object's position relative to the human body;
+- whether the object position changes over time;
+- whether the detection confidence is stable.
 
-### 3.3 候选视角几何状态
+### 3.3 Candidate-View Geometry State
 
-每一步对 4 个候选视角都构造 geometry。基础输入包括：
+Geometry is constructed for all 4 candidate views at each step. The basic inputs are:
 
     candidate view geometry       [sin(theta_v), cos(theta_v)]
     candidate-current delta       [sin(delta), cos(delta)]
     current view geometry         [sin(theta_c), cos(theta_c)]
 
-之后加入二阶 harmonic 表达：
+Second-order harmonic terms are then added:
 
     [2*sin(theta)*cos(theta), cos(theta)^2 - sin(theta)^2]
 
-最终候选几何特征为 10 维，合法性不作为普通数值特征，而是通过 action mask 单独处理。
+The final candidate geometry feature is 10-dimensional; validity is not treated as an ordinary numeric feature but is handled separately through the action mask.
 
-候选合法性为：
+Candidate validity is:
 
     raw.valid
     AND raw.reachable[current_view]
     AND candidate_not_already_observed
 
-非法候选的 Q 值在 argmax 前设为负无穷。
+The Q value of invalid candidates is set to negative infinity before argmax.
 
-### 3.4 状态中明确排除的内容
+### 3.4 Content Explicitly Excluded from the State
 
-当前轨迹策略不输入：
+The current trajectory policy does not take as input:
 
     RGB/video embedding
     VPOCLIP 512-D z
     skeleton embedding
     semantic belief
     current VPOCLIP logits
-    动作类别 ID
-    未来视角的特征、logits 或 object 信息
+    action class ID
+    features, logits, or object info from future views
     GT action label
 
-VPOCLIP logits 只在训练时构造离线收益标签，以及最终评测时计算 HAR；不进入策略输入。
+VPOCLIP logits are used only to construct offline utility labels during training and to compute HAR in the final evaluation; they do not enter the policy input.
 
-## 4. 网络结构
+## 4. Network Architecture
 
-策略网络是一个低容量、因子化的候选评分器。
+The policy network is a low-capacity, factorized candidate scorer.
 
-### 4.1 人体分支
+### 4.1 Human Branch
 
     Conv1d(4 -> 16, kernel=3, padding=1)
     GroupNorm
@@ -176,9 +176,9 @@ VPOCLIP logits 只在训练时构造离线收益标签，以及最终评测时�
     LayerNorm
     GELU
 
-输出人体上下文向量 32-D。
+It outputs a 32-D human context vector.
 
-### 4.2 Object 分支
+### 4.2 Object Branch
 
     50*6 = 300 input channels
     Conv1d(300 -> 64, kernel=3, padding=1)
@@ -189,15 +189,15 @@ VPOCLIP logits 只在训练时构造离线收益标签，以及最终评测时�
     LayerNorm
     GELU
 
-输出 object 上下文向量 64-D。
+It outputs a 64-D object context vector.
 
-### 4.3 几何和候选分支
+### 4.3 Geometry and Candidate Branch
 
     current angle [2] -> Linear -> 16-D
     person 32-D + object 64-D + angle 16-D -> context 64-D
     candidate geometry [10] -> candidate MLP -> 64-D
 
-动作分数为上下文和候选向量的低容量匹配分数，再加一个小型 residual 分支：
+The action score is a low-capacity matching score between the context and candidate vectors, plus a small residual branch:
 
 \[
 Q(s,a)=
@@ -205,113 +205,113 @@ Q(s,a)=
 +0.20\,r(h(s),g(a))
 \]
 
-网络最终输出 4 个候选视角分数：
+The network finally outputs 4 candidate-view scores:
 
     [Q(view0), Q(view1), Q(view2), Q(view3)]
 
-它不输出动作类别，也不输出连续坐标。
+It outputs neither action classes nor continuous coordinates.
 
-## 5. 多步决策过程
+## 5. Multi-Step Decision Process
 
-### 5.1 移动 1 次
+### 5.1 One Move
 
-给定起点 v0：
+Given start v0:
 
     s1 = state(history=[v0])
     a1 = argmax Q(s1, a)
     path = [v0, a1]
     final_logits = mean(logits[v0], logits[a1])
 
-融合 2 个视角。
+Fuses 2 views.
 
-### 5.2 移动 2 次
+### 5.2 Two Moves
 
-第一步选出 a1 后，机器人获得第二个视角的传感器信息：
+After a1 is selected in the first step, the robot obtains the sensor information of the second view:
 
     s2 = state(history=[v0, a1])
     a2 = argmax Q(s2, a)
     path = [v0, a1, a2]
     final_logits = mean(logits[v0], logits[a1], logits[a2])
 
-第二步不是重新从单视角预测，而是使用前两个已观察视角形成的历史状态。
+The second step does not predict anew from a single view; it uses the history state formed by the first two observed views.
 
-### 5.3 移动 3 次
+### 5.3 Three Moves
 
     s3 = state(history=[v0, a1, a2])
     a3 = argmax Q(s3, a)
     path = [v0, a1, a2, a3]
     final_logits = mean(logits[v0], logits[a1], logits[a2], logits[a3])
 
-如果四个视角全部有效，所有合法路径最终观察到的集合都相同。因此四视角平均 logits 与访问顺序无关，策略不能再改变分类信息，只能影响移动顺序和 movement cost。
+If all four views are valid, every legal path ends up observing the same set. Therefore the four-view mean logits are independent of the visit order, and the policy can no longer change classification information; it can only affect the move order and the movement cost.
 
-## 6. 训练目标
+## 6. Training Objective
 
-### 6.1 Seen 训练样本
+### 6.1 Seen Training Samples
 
-当前训练使用完整的四视角 seen episode：
+Current training uses complete four-view seen episodes:
 
     training episodes = 2734
     training class bank = seen classes
 
-只使用四视角完整样本训练，缺失视角样本不进入主训练池；评测阶段保留真实有效视角 mask。
+Only complete four-view samples are used for training; samples with missing views do not enter the main training pool. The evaluation stage keeps the real valid-view mask.
 
-每个 batch 随机生成历史阶段：
+The history stage is randomly generated per batch:
 
     history_count = 1: 45%
     history_count = 2: 45%
     history_count = 3: 10%
 
-因此网络主要学习“一个已观察视角后选第二个”和“两个已观察视角后选第三个”，第三次移动/第四视角预测只占较小比例。
+Therefore the network mainly learns "selecting the second view after one observed view" and "selecting the third view after two observed views"; the third move / fourth-view prediction accounts for only a small fraction.
 
-### 6.2 离线 delta-margin utility
+### 6.2 Offline Delta-Margin Utility
 
-对 seen 类动作类别 bank，定义当前融合状态的 GT margin：
+For the seen-class action bank, define the GT margin of the current fused state:
 
 \[
 m(s)=L_{GT}(s)-\max_{c\ne GT}L_c(s)
 \]
 
-对于候选视角 a，将它的 VPOCLIP logits 加入当前历史融合，构造：
+For a candidate view a, add its VPOCLIP logits to the current history fusion and construct:
 
 \[
 u(s,a)=m(s\cup a)-m(s)
 \]
 
-u(s,a) 表示该候选对 seen 类识别 margin 的离线提升。
+u(s,a) denotes the candidate's offline improvement of the seen-class recognition margin.
 
-重要的因果边界：
+Important causal boundary:
 
-- u(s,a) 使用未来候选的 logits 生成训练 target；
-- 未来候选 logits 不进入 state；
-- 推理时策略只有人体、object 和几何传感器；
-- GT label 不进入 state。
+- u(s,a) uses future-candidate logits to generate the training target;
+- future-candidate logits do not enter the state;
+- at inference time the policy has only human, object, and geometry sensors;
+- the GT label does not enter the state.
 
-### 6.3 Listwise + pairwise 排序损失
+### 6.3 Listwise + Pairwise Ranking Loss
 
-先将候选 utility 转成 soft target distribution：
+First convert the candidate utilities into a soft target distribution:
 
 \[
 p_a=\operatorname{softmax}(u_a/0.20)
 \]
 
-然后使用 listwise 交叉熵，使高 utility 候选获得更高分。
+Then use listwise cross-entropy so that candidates with higher utility receive higher scores.
 
-同时对 utility 差异明显的候选增加 pairwise 排序约束：
+Meanwhile, add pairwise ranking constraints for candidates with clearly different utilities:
 
-    只比较 |u_i - u_j| > 0.02 的候选对
-    要求 Q_i 与 Q_j 的顺序和 utility 顺序一致
-    差距越大，要求的 Q 分离越大
+    only compare candidate pairs with |u_i - u_j| > 0.02
+    the order of Q_i and Q_j must match the utility order
+    the larger the utility gap, the larger the required Q separation
 
-总损失为：
+The total loss is:
 
 \[
 \mathcal L=
 \mathcal L_{listwise}+0.5\mathcal L_{pairwise}
 \]
 
-history_count=3 的阶段使用较小权重 0.10，因为当前主要目标是前两次视角选择。
+The history_count=3 stage uses a smaller weight of 0.10, because the current main targets are the first two view selections.
 
-### 6.4 当前训练超参数
+### 6.4 Current Training Hyperparameters
 
     epochs              = 40
     updates_per_epoch   = 64
@@ -323,160 +323,160 @@ history_count=3 的阶段使用较小权重 0.10，因为当前主要目标是�
     training seeds      = 20260909, 20260910, 20260911
     movement cost       = not included in training loss
 
-movement cost 只在评测时记录，当前 v1 不用 movement cost 影响动作选择。
+movement cost is only recorded during evaluation; v1 does not use movement cost to influence action selection.
 
-## 7. 评测协议
+## 7. Evaluation Protocol
 
-### 7.1 起点
+### 7.1 Start Views
 
-分别固定：
+Fix each of the following:
 
     fixed0
     fixed1
     fixed2
     fixed3
 
-另外可以单独报告 random start，但不能把 random start 和固定 view0 结果混为同一个公平协议。
+A random start may additionally be reported separately, but random-start and fixed-view0 results must not be mixed into the same fair protocol.
 
-### 7.2 对比方法
+### 7.2 Compared Methods
 
-对每个起点和移动次数比较：
+Compare for each start view and move count:
 
-    Single       只使用起始视角
-    Random       随机选择同样次数的未访问视角
-    Policy       当前轨迹策略逐步选择视角
-    Oracle       使用 GT 类别选择最终 margin 最好的路径，仅作上界
-    All valid    所有有效视角平均，仅作为全视角参考
+    Single       uses only the start view
+    Random       randomly selects the same number of unvisited views
+    Policy       the current trajectory policy selects views step by step
+    Oracle       uses the GT class to select the path with the best final margin; upper bound only
+    All valid    mean over all valid views; full-view reference only
 
-Random 评测需要使用多个 evaluation seeds，避免某一个随机路径样本偶然偏好或不利。
+Random evaluation needs multiple evaluation seeds to avoid accidental favor or disfavor from a particular random-path sample.
 
-### 7.3 融合方式
+### 7.3 Fusion Method
 
-当前融合不是拼接或重新投影 512-D embedding，而是直接对冻结 VPOCLIP 的 class logits 做平均：
+The current fusion does not concatenate or reproject 512-D embeddings; it directly averages the class logits of frozen VPOCLIP:
 
 \[
 L_{fused}=
 \frac{1}{|H|}\sum_{v\in H}L_v
 \]
 
-最终在对应类别 bank 内取最大得分作为预测类别。
+The final prediction is the class with the highest score within the corresponding class bank.
 
-## 8. 当前实验结果
+## 8. Current Experimental Results
 
-以下为真实 unseen 5-way、414 个样本、3 个训练 seed，并用 10 个随机评测 seed 反复测试后的结果。表中的 Policy 是 3 个训练 checkpoint 的均值，Random 是 10 个随机路径 seed 的均值。
+The following are results on real unseen 5-way, 414 samples, and 3 training seeds, repeatedly tested with 10 random evaluation seeds. In the tables, Policy is the mean over 3 training checkpoints and Random is the mean over 10 random-path seeds.
 
-### 8.1 移动 1 次：融合 2 个视角
+### 8.1 One Move: Fusing 2 Views
 
-| 起点 | Single | Random | Policy | Policy - Random |
+| Start | Single | Random | Policy | Policy - Random |
 |---|---:|---:|---:|---:|
 | view0 | 49.28% | 52.46 ± 0.49% | 52.33 ± 0.46% | -0.13 |
 | view1 | 49.52% | 50.87 ± 0.63% | 51.29 ± 0.11% | +0.42 |
 | view2 | 48.79% | 51.04 ± 0.77% | 52.09 ± 0.30% | +1.05 |
 | view3 | 50.24% | 53.12 ± 0.70% | 53.70 ± 0.41% | +0.59 |
 
-四个起点平均：Policy 52.36%，Random 51.87%，提升约 +0.48 个百分点。
+Averaged over the four start views: Policy 52.36%, Random 51.87%, an improvement of about +0.48 percentage points.
 
-### 8.2 移动 2 次：融合 3 个视角
+### 8.2 Two Moves: Fusing 3 Views
 
-| 起点 | Single | Random | Policy | Policy - Random |
+| Start | Single | Random | Policy | Policy - Random |
 |---|---:|---:|---:|---:|
 | view0 | 49.28% | 53.74 ± 0.53% | 53.30 ± 0.30% | -0.44 |
 | view1 | 49.52% | 52.61 ± 0.72% | 53.62 ± 0.20% | +1.01 |
 | view2 | 48.79% | 52.46 ± 0.62% | 52.74 ± 0.50% | +0.27 |
 | view3 | 50.24% | 53.57 ± 0.50% | 53.78 ± 0.89% | +0.21 |
 
-四个起点平均：Policy 53.36%，Random 53.10%，提升约 +0.26 个百分点。
+Averaged over the four start views: Policy 53.36%, Random 53.10%, an improvement of about +0.26 percentage points.
 
-### 8.3 移动 3 次：融合 4 个视角
+### 8.3 Three Moves: Fusing 4 Views
 
-所有 4 个视角有效时，Random、Policy 和 All-valid 的最终分类准确率都为：
+When all 4 views are valid, the final classification accuracy of Random, Policy, and All-valid is all:
 
     53.14%
 
-原因不是策略失效，而是三次移动后四个视角都已经被融合，视角访问顺序不能改变平均 logits。当前测试中 Policy 主要体现为移动成本略低于随机路径。
+The reason is not policy failure: after three moves all four views have been fused, and the visit order cannot change the mean logits. In the current tests, Policy mainly shows up as a slightly lower movement cost than random paths.
 
-## 9. 结果解释
+## 9. Interpretation of Results
 
-当前结果支持以下较谨慎的结论：
+The current results support the following cautious conclusions:
 
-1. 人体/物体连续轨迹和样本级相机几何包含一定的可迁移视角选择信号；
-2. 这个信号在 view1–view3 起点下更明显；
-3. 固定 view0 是最严格、最公平的主协议，但当前策略在该协议下没有稳定超过随机；
-4. 多次随机评测后，单个 seed 带来的偶然优势消失，不能只报告一次随机路径；
-5. 移动 2 次通常比移动 1 次分类更高，但第三个视角也可能引入冲突信息，因此不是单调收益；
-6. 移动 3 次在四视角数据上主要是路径规划问题，而不是视角选择识别问题。
+1. Human/object tracks and sample-level camera geometry contain a certain transferable view-selection signal;
+2. This signal is more evident with view1–view3 start views;
+3. Fixed view0 is the strictest and fairest main protocol, but the current policy does not consistently beat random under this protocol;
+4. After repeated random evaluation, the accidental advantage of a single seed disappears; a single random path must not be reported alone;
+5. Two moves usually achieve higher classification accuracy than one move, but the third view may also introduce conflicting information, so the gain is not monotonic;
+6. With four-view data, three moves are mainly a path-planning problem rather than a view-selection recognition problem.
 
-当前策略更像是“利用可观测传感器先验做弱视角排序”，还不是一个能够稳定预测 HAR 最佳视角的通用策略。
+The current policy is more like "weak view ranking using observable sensor priors" and not yet a general policy that can reliably predict the best HAR view.
 
-## 10. 不能混淆的三个概念
+## 10. Three Concepts That Must Not Be Confused
 
-### 10.1 Policy 不是类别分类器
+### 10.1 The Policy Is Not a Class Classifier
 
-策略输出：
+The policy outputs:
 
     view index 0/1/2/3
 
-VPOCLIP 输出：
+VPOCLIP outputs:
 
-    55 个动作类别 logits
+    logits for 55 action classes
 
-在 unseen 测试时，VPOCLIP 的 logits 再限制到 5 个真实 unseen 类别。
+In unseen testing, the VPOCLIP logits are further restricted to the 5 real unseen classes.
 
-### 10.2 训练 target 不等于策略 state
+### 10.2 The Training Target Is Not the Policy State
 
-未来视角 logits 可以用于离线计算“这个视角对 seen 类识别是否有帮助”的 target，但不能作为策略输入。否则会发生未来信息泄漏，测到的是 privileged selector，而不是可部署策略。
+Future-view logits can be used offline to compute the target of "whether this view helps seen-class recognition", but they cannot serve as policy input. Otherwise future information leaks, and what is measured is a privileged selector rather than a deployable policy.
 
-### 10.3 三次移动不等于三次新的候选选择收益
+### 10.3 Three Moves Do Not Mean Three Rounds of New Candidate-Selection Gains
 
-三次移动访问四个固定视角后，所有路径都观察相同的四个数据块。因此：
+After three moves over the four fixed views, all paths observe the same four data blocks. Therefore:
 
-- 分类结果由四视角集合决定；
-- 访问顺序只影响运动成本和到达时间；
-- 如果要研究第四次以后仍有新信息，必须增加中间相机位姿、实时视频或新的传感器观测。
+- The classification result is determined by the four-view set;
+- The visit order only affects motion cost and arrival time;
+- To study whether new information still exists beyond the fourth view, intermediate camera poses, live video, or new sensor observations must be added.
 
-## 11. 当前代码和结果位置
+## 11. Current Code and Result Locations
 
-主训练策略：
+Main training policy:
 
     /home/youhan/ws/VPOCLIP_plus_full/rl/multistep_angle_object_trajectory_policy_v1.py
 
-object 轨迹提取：
+Object track extraction:
 
     /home/youhan/ws/VPOCLIP_plus_full/rl/build_object_position_tracks.py
 
-多 seed 评测：
+Multi-seed evaluation:
 
     /home/youhan/ws/VPOCLIP_plus_full/rl/evaluate_trajectory_policy_seed_sweep.py
     /home/youhan/ws/VPOCLIP_plus_full/rl/evaluate_one_two_move_random_seed_sweep.py
 
-移动 1 次/2 次评测：
+One-move / two-move evaluation:
 
     /home/youhan/ws/VPOCLIP_plus_full/rl/evaluate_trajectory_policy_one_two_moves.py
 
-移动 3 次、四视角融合评测：
+Three-move, four-view fusion evaluation:
 
     /home/youhan/ws/VPOCLIP_plus_full/rl/evaluate_trajectory_policy_four_views.py
 
-训练 checkpoint：
+Training checkpoints:
 
     /home/youhan/ws/VPOCLIP_plus_full/work_dir/multistep_angle_object_trajectory_policy_v1/seed_20260909/best.pt
     /home/youhan/ws/VPOCLIP_plus_full/work_dir/multistep_angle_object_trajectory_policy_v1/seed_20260910/best.pt
     /home/youhan/ws/VPOCLIP_plus_full/work_dir/multistep_angle_object_trajectory_policy_v1/seed_20260911/best.pt
 
-当前主要结果：
+Current main results:
 
     /home/youhan/ws/VPOCLIP_plus_full/work_dir/multistep_angle_object_trajectory_policy_v1/summary.json
     /home/youhan/ws/VPOCLIP_plus_full/work_dir/multistep_angle_object_trajectory_policy_v1/one_two_move_test/random_seed_sweep/summary.json
     /home/youhan/ws/VPOCLIP_plus_full/work_dir/multistep_angle_object_trajectory_policy_v1/four_view_three_move_test/summary.json
 
-## 12. 后续可研究方向
+## 12. Possible Future Directions
 
-如果继续改进，优先级应为：
+If this line is continued, the priorities should be:
 
-1. 在固定 view0 主协议下使用多 seed 验证，而不是只追求某个起点的最好数字；
-2. 加入 STOP 动作，让策略可以在第二视角已经足够好时停止移动；
-3. 将“识别收益”和“移动成本”作为独立报告维度，再决定是否放入 reward；
-4. 用更多 held-out seen classes 检查轨迹到视角收益的可预测性；
-5. 如果要研究 3 次以上移动，提供真实的新观测，而不是重复四个缓存视角；
-6. 只有在状态可预测性明确成立后，再考虑 PPO/DQN 等真正在线 RL 算法。
+1. Use multi-seed validation under the fixed-view0 main protocol, rather than chasing the best number at some start view;
+2. Add a STOP action so that the policy can stop moving when the second view is already good enough;
+3. Report "recognition gain" and "movement cost" as independent dimensions before deciding whether to include them in the reward;
+4. Use more held-out seen classes to check the predictability of view utility from tracks;
+5. To study more than 3 moves, provide genuinely new observations instead of repeating the four cached views;
+6. Consider real online RL algorithms such as PPO/DQN only after state predictability is clearly established.
 
